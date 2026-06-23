@@ -1,0 +1,1735 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>じぶんログ — My Emotion Log</title>
+<style>
+:root {
+  --bg: #f4f6fb;
+  --surface: #ffffff;
+  --surface2: #edf0fa;
+  --border: #d8e0f0;
+  --text: #1e2d4a;
+  --text2: #6b7a9f;
+  --accent: #4a7cf7;
+  --accent-light: #e8efff;
+  --danger: #e05252;
+  --shadow: 0 2px 8px rgba(74,124,247,0.08);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --bg-outer: #d8e0f0;
+}
+html[data-theme="dark"] {
+  --bg: #1c2133; --surface: #252d45; --surface2: #2e3858;
+  --border: #3d4d75; --text: #e6eaff; --text2: #8898cc;
+  --accent: #7aadff; --accent-light: #1e2d52; --danger: #ff6b6b;
+  --shadow: 0 2px 8px rgba(0,0,0,0.4); --bg-outer: #0f1320;
+}
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    --bg: #1c2133; --surface: #252d45; --surface2: #2e3858;
+    --border: #3d4d75; --text: #e6eaff; --text2: #8898cc;
+    --accent: #7aadff; --accent-light: #1e2d52; --danger: #ff6b6b;
+    --shadow: 0 2px 8px rgba(0,0,0,0.4); --bg-outer: #0f1320;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  background: var(--bg-outer);
+  color: var(--text);
+  font-size: 1em;
+  line-height: 1.6;
+  min-height: 100%;
+}
+
+/* Layout */
+#app {
+  display: flex; flex-direction: column; min-height: 100vh;
+  max-width: 430px; margin: 0 auto; background: var(--bg);
+  box-shadow: 0 0 60px rgba(0,0,0,0.12);
+}
+.screen { display: none; flex: 1; flex-direction: column; }
+.screen.active { display: flex; }
+
+/* Header */
+#app-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+#app-header h1 { font-size: 1.125em; font-weight: 700; letter-spacing: 0.02em; }
+#header-left { display: flex; align-items: center; }
+
+html[data-fontsize="large"] #app-header { font-size: 1rem; }
+.header-actions { display: flex; gap: 20px; align-items: center; }
+
+/* Hero title */
+.home-hero { text-align: center; }
+.hero-title { font-size: 1.625em; font-weight: 800; letter-spacing: 0.03em; margin-bottom: 2px; }
+.hero-subtitle { font-size: 0.75em; color: var(--text2); letter-spacing: 0.08em; margin-bottom: 10px; }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  border: none;
+  font-size: 0.9375em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-ghost { background: transparent; color: var(--accent); padding: 8px 12px; font-size: 0.875em; white-space: nowrap; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-sm { padding: 8px 14px; font-size: 0.8125em; }
+.btn-full { width: 100%; }
+.btn-icon { padding: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 1.125em; line-height: 1; }
+
+/* Theme toggle */
+.theme-toggle {
+  display: flex; align-items: center; gap: 6px;
+  cursor: pointer; user-select: none;
+}
+.theme-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+.theme-toggle-icon { font-size: 0.9375em; line-height: 1; }
+.toggle-text { font-size: 0.75em; color: var(--text2); white-space: nowrap; }
+.toggle-a { font-weight: 700; color: var(--text2); line-height: 1; white-space: nowrap; }
+.toggle-a-sm { font-size: 0.6875em; }
+.toggle-a-lg { font-size: 1.062em; }
+html[data-fontsize="large"] body { font-size: 1.28em; }
+html[data-fontsize="large"] .home-hero { padding: 12px 14px; }
+html[data-fontsize="large"] .nav-card { padding: 8px 10px; }
+html[data-fontsize="large"] .home-layout { gap: 6px; }
+html[data-fontsize="large"] .scroll-content { padding: 8px; }
+.toggle-track {
+  width: 40px; height: 22px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 11px; position: relative;
+  transition: background 0.2s, border-color 0.2s; flex-shrink: 0;
+}
+.theme-toggle input:checked + .toggle-track { background: var(--accent); border-color: var(--accent); }
+.toggle-thumb {
+  position: absolute; top: 3px; left: 3px;
+  width: 14px; height: 14px;
+  background: #fff; border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+}
+.theme-toggle input:checked + .toggle-track .toggle-thumb { transform: translateX(18px); }
+
+/* Scroll content */
+.scroll-content { flex: 1; overflow-y: auto; padding: 16px; }
+
+/* Home screen */
+.home-layout { display: flex; flex-direction: column; gap: 12px; }
+.home-hero {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 24px 20px;
+  text-align: center;
+  border: 1px solid var(--border);
+}
+.home-hero p { font-size: 0.8125em; color: var(--text2); margin-top: 6px; line-height: 1.7; }
+.nav-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.nav-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.1s;
+}
+.nav-card:active { transform: scale(0.97); }
+.nav-card .nav-icon { font-size: 1.375em; }
+.nav-card .nav-label { font-size: 0.875em; font-weight: 600; }
+.nav-card .nav-desc { font-size: 0.75em; color: var(--text2); }
+.nav-card-primary { background: var(--accent); border-color: var(--accent); }
+.nav-card-primary .nav-label { color: #fff; }
+.nav-card-primary .nav-desc { color: rgba(255,255,255,0.75); }
+
+/* Step wizard */
+#screen-new { display: none; flex-direction: column; }
+#screen-new.active { display: flex; }
+.wizard-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 16px 10px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.wizard-header-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.wizard-title { font-size: 0.9375em; font-weight: 700; text-align: center; }
+.wizard-step-label { font-size: 0.75em; color: var(--text2); text-align: right; }
+.wizard-home-btn {
+  background: none; border: none; color: var(--text2);
+  font-size: 0.8125em; cursor: pointer; padding: 4px 0;
+  text-align: left; white-space: nowrap;
+}
+.progress-bar { height: 4px; background: var(--border); border-radius: 2px; }
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s ease; }
+
+.wizard-content { flex: 1; overflow-y: auto; padding: 20px 16px; max-width: 500px; margin: 0 auto; width: 100%; }
+.step { display: none; flex-direction: column; gap: 16px; }
+.step.active { display: flex; }
+.step-question { font-size: 1.25em; font-weight: 700; line-height: 1.4; }
+.step-hint { font-size: 0.8125em; color: var(--text2); margin-top: -8px; }
+
+textarea {
+  width: 100%;
+  padding: 14px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.9375em;
+  font-family: inherit;
+  line-height: 1.6;
+  resize: none;
+  transition: border-color 0.15s;
+  min-height: 120px;
+}
+textarea:focus { outline: none; border-color: var(--accent); }
+
+/* Emotion selector */
+.emotion-categories {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.emo-cat-btn {
+  padding: 12px 10px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.875em;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: border-color 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+.emo-cat-btn.selected { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+.emo-cat-icon { font-size: 1.125em; }
+.subcategory-section { display: none; flex-direction: column; gap: 8px; }
+.subcategory-section.visible { display: flex; }
+.subcategory-section h3 { font-size: 0.8125em; color: var(--text2); font-weight: 600; }
+.subcategory-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.8125em;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.chip.selected { border-color: var(--accent); background: var(--accent-light); color: var(--accent); font-weight: 600; }
+
+/* Intensity slider */
+.intensity-section { display: none; flex-direction: column; gap: 10px; }
+.intensity-section.visible { display: flex; }
+.intensity-label { font-size: 0.8125em; color: var(--text2); font-weight: 600; }
+.intensity-row { display: flex; align-items: center; gap: 12px; }
+input[type=range] {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  outline: none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+.intensity-value {
+  font-size: 1.25em;
+  font-weight: 700;
+  color: var(--accent);
+  width: 30px;
+  text-align: center;
+}
+.intensity-desc { font-size: 0.75em; color: var(--text2); }
+
+/* Tags */
+.tag-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.custom-tag-input {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.custom-tag-input input {
+  flex: 1;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.875em;
+  font-family: inherit;
+}
+.custom-tag-input input:focus { outline: none; border-color: var(--accent); }
+
+/* Wizard footer */
+.wizard-footer {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 12px 16px;
+  display: flex;
+  gap: 10px;
+  max-width: 500px;
+  margin: 0 auto;
+  width: 100%;
+}
+.wizard-footer .btn { flex: 1; }
+
+/* List screen */
+.list-empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text2);
+}
+.list-empty .empty-icon { font-size: 3em; margin-bottom: 12px; }
+.list-empty p { font-size: 0.9375em; }
+.record-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.record-card:active { transform: scale(0.98); }
+.record-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.record-date { font-size: 0.75em; color: var(--text2); }
+.emo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.75em;
+  font-weight: 600;
+  background: var(--accent-light);
+  color: var(--accent);
+}
+.record-event { font-size: 0.875em; color: var(--text); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.intensity-dots { display: flex; gap: 3px; margin-left: auto; }
+.intensity-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); }
+.intensity-dot.filled { background: var(--accent); }
+
+/* Detail screen */
+.detail-content { max-width: 500px; margin: 0 auto; width: 100%; }
+.detail-header-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.detail-date { font-size: 0.8125em; color: var(--text2); }
+.detail-section { margin-bottom: 20px; }
+.detail-section label { font-size: 0.75em; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px; }
+.detail-section p { font-size: 0.9375em; line-height: 1.7; }
+.detail-section .chips-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.detail-section .chip { cursor: default; }
+.detail-intensity { display: flex; align-items: center; gap: 10px; }
+.detail-intensity-bar { flex: 1; height: 8px; background: var(--border); border-radius: 4px; }
+.detail-intensity-fill { height: 100%; background: var(--accent); border-radius: 4px; }
+.detail-actions { display: flex; gap: 10px; margin-top: 24px; }
+
+/* Graph screen */
+.graph-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.filter-btn {
+  padding: 7px 14px;
+  border-radius: 16px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text2);
+  font-size: 0.8125em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.filter-btn.active { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+#graph-canvas {
+  width: 100%;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: block;
+}
+.graph-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.75em; color: var(--text2); }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+/* Export screen */
+.export-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 12px;
+}
+.export-card h3 { font-size: 1em; font-weight: 700; margin-bottom: 6px; }
+.export-card p { font-size: 0.8125em; color: var(--text2); margin-bottom: 14px; }
+.import-drop {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--text2);
+  font-size: 0.875em;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  margin-bottom: 10px;
+}
+.import-drop:hover { border-color: var(--accent); }
+#import-file { display: none; }
+
+/* Bottom nav */
+#bottom-nav {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  position: sticky;
+  bottom: 0;
+  z-index: 100;
+}
+.bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 4px;
+  gap: 3px;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  font-size: 0.6875em;
+  transition: color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.bottom-nav-item .nav-icon-b { font-size: 1.25em; }
+.bottom-nav-item.active { color: var(--accent); }
+
+/* Toast */
+#toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--text);
+  color: var(--bg);
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 0.875em;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+  pointer-events: none;
+  z-index: 999;
+  white-space: nowrap;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Utility */
+.divider { height: 1px; background: var(--border); margin: 4px 0; }
+.text-center { text-align: center; }
+.mt-8 { margin-top: 8px; }
+.section-title { font-size: 0.8125em; font-weight: 700; color: var(--text2); margin-bottom: 10px; }
+
+/* Period selector */
+.period-selector { display: flex; gap: 6px; margin: 10px 0; flex-wrap: wrap; }
+.period-btn {
+  flex: 1; padding: 7px 4px; border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border); background: var(--surface);
+  color: var(--text2); font-size: 0.8125em; cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.period-btn.selected { border-color: var(--accent); background: var(--accent-light); color: var(--accent); font-weight: 700; }
+
+/* Graph tabs */
+.graph-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 16px;
+}
+.graph-tab-btn {
+  flex: 1; padding: 10px 8px; border: none; background: transparent;
+  color: var(--text2); font-size: 0.875em; font-weight: 600;
+  cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.graph-tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Analysis cards */
+.analysis-section {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; margin-bottom: 10px;
+}
+.analysis-section h4 {
+  font-size: 0.75em; font-weight: 700; color: var(--text2);
+  text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px;
+}
+.analysis-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0; border-bottom: 1px solid var(--border);
+}
+.analysis-row:last-child { border-bottom: none; }
+.analysis-row-rank { font-size: 0.75em; color: var(--text2); width: 18px; text-align: center; flex-shrink: 0; }
+.analysis-row-label { flex: 1; font-size: 0.875em; min-width: 0; }
+.analysis-bar-wrap { width: 70px; flex-shrink: 0; }
+.analysis-bar { height: 6px; border-radius: 3px; background: var(--accent); opacity: 0.8; }
+.analysis-row-val { font-size: 0.75em; color: var(--text2); width: 36px; text-align: right; flex-shrink: 0; }
+.analysis-fact { font-size: 0.9375em; line-height: 1.7; }
+
+/* Responsive */
+@media (min-width: 600px) {
+  .emotion-categories { grid-template-columns: repeat(4, 1fr); }
+  .wizard-content { padding: 24px 20px; }
+
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- App Header (list/graph/export のみ表示) -->
+  <header id="app-header">
+    <div id="header-left">
+      <div id="header-title"><h1>じぶんログ</h1></div>
+      <button id="home-btn" class="btn btn-ghost" onclick="showScreen('home')" style="display:none">← ホーム</button>
+    </div>
+    <div class="header-actions" id="header-actions">
+      <label class="theme-toggle" title="テーマ切替">
+        <span class="theme-toggle-icon">☀️</span>
+        <span class="toggle-text">ライト</span>
+        <input type="checkbox" id="theme-checkbox" onchange="toggleTheme()">
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        <span class="toggle-text">ダーク</span>
+        <span class="theme-toggle-icon">🌙</span>
+      </label>
+      <label class="theme-toggle" title="文字サイズ切替">
+        <span class="toggle-a toggle-a-sm">A</span>
+        <span class="toggle-text">小</span>
+        <input type="checkbox" id="font-checkbox" onchange="toggleFontSize()">
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        <span class="toggle-text">大</span>
+        <span class="toggle-a toggle-a-lg">A</span>
+      </label>
+    </div>
+  </header>
+
+  <!-- HOME -->
+  <main id="screen-home" class="screen">
+    <div class="scroll-content">
+      <div class="home-layout">
+        <div class="home-hero">
+          <div style="font-size: 2.5em;margin-bottom:10px;">📓</div>
+          <div id="hero-greeting" style="display:none;font-size:0.875em;color:var(--text2);margin-bottom:6px;"></div>
+          <div class="hero-title">じぶんログ</div>
+          <div class="hero-subtitle">My Emotion Log</div>
+          <p>感じたことを、事実と解釈に分けて記録するアプリです。<br>評価しない。ただ気づく。EQ（感情知性）を育てる第一歩。</p>
+        </div>
+        <div class="nav-grid">
+          <div class="nav-card nav-card-primary" onclick="startNew()">
+            <div class="nav-icon">✏️</div>
+            <div class="nav-label">新しく記録する</div>
+            <div class="nav-desc">今の気持ちを書き留める</div>
+          </div>
+          <div class="nav-card" onclick="showScreen('list')">
+            <div class="nav-icon">📋</div>
+            <div class="nav-label">振り返り</div>
+            <div class="nav-desc" id="home-count">記録を見る</div>
+          </div>
+          <div class="nav-card" onclick="showScreen('graph')">
+            <div class="nav-icon">📊</div>
+            <div class="nav-label">グラフ</div>
+            <div class="nav-desc">感情の流れ</div>
+          </div>
+          <div class="nav-card" onclick="showScreen('export')">
+            <div class="nav-icon">🗂️</div>
+            <div class="nav-label">データ管理</div>
+            <div class="nav-desc">共有・移行・削除</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- NEW RECORD WIZARD -->
+  <div id="screen-new" class="screen">
+    <div class="wizard-header">
+      <div class="wizard-header-row">
+        <button class="wizard-home-btn" onclick="showScreen('home')">← ホーム</button>
+        <div class="wizard-title" id="wizard-title">新しく記録する</div>
+        <div class="wizard-step-label" id="wizard-step-label">ステップ 1 / 5</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:20%"></div></div>
+    </div>
+    <div class="wizard-content">
+      <!-- Step 1: Event datetime -->
+      <div class="step active" id="step-1">
+        <div class="step-question">いつ頃の出来事ですか？</div>
+        <div class="step-hint">出来事が起きた日時を入力してください。変更しない場合はそのまま次へ進めます。</div>
+        <input type="datetime-local" id="input-event-date"
+          style="width:100%;padding:14px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:0.9375em;font-family:inherit;color-scheme:light dark;">
+      </div>
+      <!-- Step 2: Event -->
+      <div class="step" id="step-2">
+        <div class="step-question">何があった？</div>
+        <div class="step-hint">事実だけを書いてください（解釈や感情は次のステップで）</div>
+        <textarea id="input-event" placeholder="例：上司に「この資料、作り直して」と言われた" rows="5"></textarea>
+      </div>
+      <!-- Step 3: Interpretation -->
+      <div class="step" id="step-3">
+        <div class="step-question">どう受け取った？</div>
+        <div class="step-hint">その出来事をどう解釈しましたか？感じた意味や思い込みを書いてください</div>
+        <textarea id="input-interpretation" placeholder="例：自分の能力を否定されたと感じた。また失敗したと思った" rows="5"></textarea>
+      </div>
+      <!-- Step 4: Emotion -->
+      <div class="step" id="step-4">
+        <div class="step-question">どんな感情を感じた？</div>
+        <div class="step-hint">大カテゴリーを選んで、さらに細かい感情を選んでください</div>
+        <div class="emotion-categories" id="emotion-categories"></div>
+        <div class="subcategory-section" id="subcategory-section">
+          <h3 id="subcategory-title">細かい感情</h3>
+          <div class="subcategory-chips" id="subcategory-chips"></div>
+        </div>
+        <div class="intensity-section" id="intensity-section">
+          <div class="intensity-label">感情の強さ</div>
+          <div class="intensity-row">
+            <input type="range" id="intensity-slider" min="1" max="5" value="3" oninput="updateIntensity()">
+            <div class="intensity-value" id="intensity-value">3</div>
+          </div>
+          <div class="intensity-desc" id="intensity-desc">ふつう</div>
+        </div>
+      </div>
+      <!-- Step 5: Triggers -->
+      <div class="step" id="step-5">
+        <div class="step-question">トリガータグ <span style="font-size: 0.875em;color:var(--text2);font-weight:400;">（任意）</span></div>
+        <div class="step-hint">この出来事に関係しているものをタップして選んでください</div>
+        <div class="tag-chips" id="trigger-chips"></div>
+        <div class="custom-tag-input mt-8">
+          <input type="text" id="custom-tag-input" placeholder="カスタムタグを追加" maxlength="20">
+          <button class="btn btn-secondary btn-sm" onclick="addCustomTag()">追加</button>
+        </div>
+        <div class="tag-chips mt-8" id="custom-trigger-chips"></div>
+      </div>
+      <!-- Step 6: Needs -->
+      <div class="step" id="step-6">
+        <div class="step-question">本当は何が必要だった？ <span style="font-size: 0.875em;color:var(--text2);font-weight:400;">（任意）</span></div>
+        <div class="step-hint">その状況で本当に欲していたものは何でしょう？</div>
+        <div class="tag-chips" id="needs-chips"></div>
+        <textarea id="input-needs-text" placeholder="自由に記述する（任意）" rows="3" style="margin-top:12px;"></textarea>
+      </div>
+    </div>
+    <div class="wizard-footer">
+      <button class="btn btn-secondary" id="btn-back" onclick="wizardBack()">← 戻る</button>
+      <button class="btn btn-primary" id="btn-next" onclick="wizardNext()">次へ →</button>
+    </div>
+  </div>
+
+  <!-- LIST -->
+  <main id="screen-list" class="screen">
+    <div class="scroll-content" id="list-content">
+      <div class="list-empty">
+        <div class="empty-icon">📭</div>
+        <p>まだ記録がありません</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- DETAIL -->
+  <main id="screen-detail" class="screen">
+    <div class="scroll-content">
+      <div class="detail-content" id="detail-content"></div>
+    </div>
+  </main>
+
+  <!-- GRAPH -->
+  <main id="screen-graph" class="screen">
+    <div class="scroll-content">
+      <div style="max-width:600px;margin:0 auto;">
+        <div class="graph-tabs">
+          <button class="graph-tab-btn active" data-tab="chart" onclick="switchGraphTab('chart')">📊 グラフ</button>
+          <button class="graph-tab-btn" data-tab="analysis" onclick="switchGraphTab('analysis')">🔍 傾向分析</button>
+        </div>
+        <div id="graph-tab-chart">
+          <div class="graph-filters">
+            <button class="filter-btn active" data-range="7" onclick="setGraphRange(this,7)">1週間</button>
+            <button class="filter-btn" data-range="30" onclick="setGraphRange(this,30)">1ヶ月</button>
+            <button class="filter-btn" data-range="0" onclick="setGraphRange(this,0)">全期間</button>
+          </div>
+          <canvas id="graph-canvas"></canvas>
+          <div class="graph-legend" id="graph-legend"></div>
+        </div>
+        <div id="graph-tab-analysis" style="display:none;">
+          <div class="graph-filters" id="analysis-filters">
+            <button class="filter-btn active" data-adays="7" onclick="setAnalysisRange(this,7)">1週間</button>
+            <button class="filter-btn" data-adays="30" onclick="setAnalysisRange(this,30)">1ヶ月</button>
+            <button class="filter-btn" data-adays="0" onclick="setAnalysisRange(this,0)">全期間</button>
+          </div>
+          <div id="analysis-content"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- EXPORT/IMPORT -->
+  <main id="screen-export" class="screen">
+    <div class="scroll-content">
+      <div style="max-width:500px;margin:0 auto;">
+        <div class="export-card">
+          <h3>👤 名前（ニックネーム）</h3>
+          <p>レポートやホーム画面に表示されます。</p>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" id="name-input" placeholder="ニックネームを入力" maxlength="20"
+              style="flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:0.9375em;font-family:inherit;">
+            <button class="btn btn-primary btn-sm" onclick="saveName()">保存</button>
+          </div>
+        </div>
+        <div class="export-card">
+          <h3>📄 共有データ書き出し</h3>
+          <p>ブラウザで開けるHTMLファイルを生成します。感情グラフと全記録を含むので、支援者・家族・カウンセラーへの共有に使えます。</p>
+          <div class="period-selector">
+            <button class="period-btn" data-days="7" onclick="selectExportPeriod(7)">1週間</button>
+            <button class="period-btn selected" data-days="30" onclick="selectExportPeriod(30)">1ヶ月</button>
+            <button class="period-btn" data-days="90" onclick="selectExportPeriod(90)">3ヶ月</button>
+            <button class="period-btn" data-days="0" onclick="selectExportPeriod(0)">全期間</button>
+            <button class="period-btn" data-days="-1" onclick="selectExportPeriod(-1)">月を指定</button>
+          </div>
+          <div class="period-selector" id="month-selector" style="display:none;flex-wrap:wrap;"></div>
+          <button class="btn btn-primary" onclick="exportHTML()">共有レポートを生成</button>
+        </div>
+        <div class="export-card">
+          <h3>📦 移行データ書き出し</h3>
+          <p>全データをJSONファイルとして保存します。スマホの買い替えやアプリの引き継ぎなど、<strong>デバイスを移るときに使用</strong>します。新しいデバイスでインポートすることで記録を引き継げます。</p>
+          <button class="btn btn-secondary" onclick="exportJSON()">移行データをダウンロード</button>
+        </div>
+        <div class="export-card">
+          <h3>📥 インポート</h3>
+          <p>JSONファイルからデータを読み込みます。既存データに追加されます。</p>
+          <div class="import-drop" onclick="document.getElementById('import-file').click()">
+            📁 ファイルを選択またはここにドロップ
+          </div>
+          <input type="file" id="import-file" accept=".json" onchange="importJSON(event)">
+          <div class="btn btn-secondary btn-full" style="text-align:center;padding:12px;cursor:pointer;" onclick="document.getElementById('import-file').click()">ファイルを選択</div>
+        </div>
+        <div class="export-card" style="border-color:var(--danger);">
+          <h3 style="color:var(--danger);">⚠️ 全データ削除</h3>
+          <p>保存されている全ての記録を削除します。この操作は取り消せません。</p>
+          <button class="btn btn-danger" onclick="confirmClearAll()">全データを削除</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom Nav -->
+  <nav id="bottom-nav">
+    <button class="bottom-nav-item active" data-screen="home" onclick="showScreen('home')">
+      <span class="nav-icon-b">🏠</span>ホーム
+    </button>
+    <button class="bottom-nav-item" data-screen="list" onclick="showScreen('list')">
+      <span class="nav-icon-b">📋</span>振り返り
+    </button>
+    <button class="bottom-nav-item" data-screen="graph" onclick="showScreen('graph')">
+      <span class="nav-icon-b">📊</span>グラフ
+    </button>
+    <button class="bottom-nav-item" data-screen="export" onclick="showScreen('export')">
+      <span class="nav-icon-b">📤</span>データ
+    </button>
+  </nav>
+
+  <div id="toast"></div>
+</div>
+
+<script>
+// ============================
+// DATA
+// ============================
+const STORAGE_KEY = 'jibun_log_entries';
+
+const EMOTIONS = {
+  '喜び':   { icon: '😊', color: '#f4a261', subs: ['幸福感','感謝','高揚','満足','安堵','希望'] },
+  '信頼':   { icon: '🤝', color: '#2a9d8f', subs: ['尊敬','受容','親しみ','称賛'] },
+  '恐れ':   { icon: '😨', color: '#6c757d', subs: ['不安','心配','怖さ','パニック'] },
+  '驚き':   { icon: '😲', color: '#e9c46a', subs: ['戸惑い','驚嘆'] },
+  '悲しみ': { icon: '😢', color: '#5b7fa6', subs: ['悲哀','失望','無力感','孤独','後悔'] },
+  '嫌悪':   { icon: '🤢', color: '#6b4226', subs: ['不快','軽蔑','嫌悪感'] },
+  '怒り':   { icon: '😠', color: '#e76f51', subs: ['苛立ち','憤り','不満','嫌悪','羨望'] },
+  '期待':   { icon: '🤩', color: '#a8dadc', subs: ['興味','好奇心','熱中','熱意'] },
+};
+
+const TRIGGER_PRESETS = ['仕事','家庭','人間関係','言葉','体調','お金','時間','環境','孤独','評価'];
+const NEEDS_PRESETS   = ['承認','安心','自由','つながり','休息','理解','達成','公平','自得','楽しみ'];
+
+const INTENSITY_DESCS = ['','とても小さい','小さい','ふつう','強い','とても強い'];
+
+function loadEntries() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  catch { return []; }
+}
+function saveEntries(arr) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+}
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function getCurrentDateTimeLocal() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+
+// ============================
+// WIZARD STATE
+// ============================
+let wizardStep = 1;
+let wizardData = {};
+let exportPeriodDays = 30;
+let exportMonthKey = null;
+let selectedEmoCategory = null;
+let selectedEmoSub = null;
+let selectedTriggers = new Set();
+let customTriggers = [];
+let selectedNeeds = new Set();
+let editingId = null;
+let currentGraphTab = 'chart';
+let currentAnalysisRange = 30;
+
+// ============================
+// SCREEN NAV
+// ============================
+const WIZARD_SCREENS = ['new'];
+
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+
+  const isWizard = WIZARD_SCREENS.includes(name);
+  document.getElementById('app-header').style.display = isWizard ? 'none' : '';
+  document.getElementById('bottom-nav').style.display = isWizard ? 'none' : '';
+  document.getElementById('header-title').style.display = 'none';
+  document.getElementById('home-btn').style.display = name === 'home' ? 'none' : '';
+
+  document.querySelectorAll('.bottom-nav-item').forEach(b => {
+    b.classList.toggle('active', b.dataset.screen === name);
+  });
+
+  if (name === 'list') renderList();
+  if (name === 'graph') {
+    if (currentGraphTab === 'chart') renderGraph(currentRange);
+    else renderAnalysis(currentAnalysisRange);
+  }
+  if (name === 'home') { updateHomeCount(); updateHeroGreeting(); }
+  if (name === 'export') {
+    const ni = document.getElementById('name-input');
+    if (ni) ni.value = loadName();
+  }
+}
+
+function updateHomeCount() {
+  const n = loadEntries().length;
+  document.getElementById('home-count').textContent = n ? `${n}件の記録` : '記録を見る';
+}
+
+function loadName() { return localStorage.getItem('jibun_log_name') || ''; }
+function saveName() {
+  const val = document.getElementById('name-input').value.trim();
+  localStorage.setItem('jibun_log_name', val);
+  updateHeroGreeting();
+  showToast(val ? `「${val}」さんで保存しました` : '名前をクリアしました');
+}
+function updateHeroGreeting() {
+  const name = loadName();
+  const el = document.getElementById('hero-greeting');
+  if (!el) return;
+  if (name) { el.textContent = `こんにちは、${name}さん`; el.style.display = ''; }
+  else { el.style.display = 'none'; }
+}
+function selectExportPeriod(days) {
+  exportPeriodDays = days;
+  exportMonthKey = null;
+  document.querySelectorAll('.period-btn:not([data-month])').forEach(b =>
+    b.classList.toggle('selected', Number(b.dataset.days) === days));
+  const monthSel = document.getElementById('month-selector');
+  if (days === -1) {
+    const entries = loadEntries();
+    const months = [...new Set(entries.map(e => {
+      const d = new Date(e.date);
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    }))].sort().reverse();
+    monthSel.innerHTML = months.map(m => {
+      const [y, mo] = m.split('-');
+      return `<button class="period-btn" data-month="${m}" onclick="selectExportMonth('${m}')">${y}/${Number(mo)}月</button>`;
+    }).join('');
+    monthSel.style.display = 'flex';
+  } else {
+    monthSel.style.display = 'none';
+    monthSel.innerHTML = '';
+  }
+}
+function selectExportMonth(monthKey) {
+  exportMonthKey = monthKey;
+  document.querySelectorAll('#month-selector .period-btn').forEach(b =>
+    b.classList.toggle('selected', b.dataset.month === monthKey));
+}
+
+// ============================
+// WIZARD
+// ============================
+function startNew() {
+  wizardStep = 1;
+  wizardData = {};
+  selectedEmoCategory = null;
+  selectedEmoSub = null;
+  selectedTriggers = new Set();
+  customTriggers = [];
+  selectedNeeds = new Set();
+  editingId = null;
+
+  document.getElementById('input-event-date').value = getCurrentDateTimeLocal();
+  document.getElementById('input-event').value = '';
+  document.getElementById('input-interpretation').value = '';
+  document.getElementById('intensity-slider').value = 3;
+  document.getElementById('input-needs-text').value = '';
+  document.getElementById('custom-tag-input').value = '';
+  document.getElementById('subcategory-section').classList.remove('visible');
+  document.getElementById('intensity-section').classList.remove('visible');
+
+  buildEmotionUI();
+  buildTriggerChips();
+  buildNeedsChips();
+  updateCustomTriggerChips();
+  updateWizardUI();
+  showScreen('new');
+}
+
+function buildEmotionUI() {
+  const catEl = document.getElementById('emotion-categories');
+  catEl.innerHTML = '';
+  Object.entries(EMOTIONS).forEach(([name, data]) => {
+    const btn = document.createElement('button');
+    btn.className = 'emo-cat-btn';
+    btn.dataset.cat = name;
+    btn.innerHTML = `<span class="emo-cat-icon">${data.icon}</span>${name}`;
+    btn.onclick = () => selectEmoCategory(name);
+    catEl.appendChild(btn);
+  });
+}
+
+function selectEmoCategory(name) {
+  selectedEmoCategory = name;
+  selectedEmoSub = null;
+  document.querySelectorAll('.emo-cat-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.cat === name);
+  });
+  const sec = document.getElementById('subcategory-section');
+  sec.classList.add('visible');
+  document.getElementById('subcategory-title').textContent = EMOTIONS[name].icon + ' ' + name + ' の感情';
+  const chips = document.getElementById('subcategory-chips');
+  chips.innerHTML = '';
+  EMOTIONS[name].subs.forEach(sub => {
+    const c = document.createElement('button');
+    c.className = 'chip';
+    c.textContent = sub;
+    c.onclick = () => selectEmoSub(sub, c);
+    chips.appendChild(c);
+  });
+  document.getElementById('intensity-section').classList.remove('visible');
+}
+
+function selectEmoSub(sub, el) {
+  selectedEmoSub = sub;
+  document.querySelectorAll('#subcategory-chips .chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('intensity-section').classList.add('visible');
+  updateIntensity();
+}
+
+function updateIntensity() {
+  const val = parseInt(document.getElementById('intensity-slider').value);
+  document.getElementById('intensity-value').textContent = val;
+  document.getElementById('intensity-desc').textContent = INTENSITY_DESCS[val];
+}
+
+function buildTriggerChips() {
+  const el = document.getElementById('trigger-chips');
+  el.innerHTML = '';
+  TRIGGER_PRESETS.forEach(t => {
+    const c = document.createElement('button');
+    c.className = 'chip';
+    c.textContent = t;
+    c.dataset.tag = t;
+    c.onclick = () => toggleChip(c, selectedTriggers, t);
+    el.appendChild(c);
+  });
+}
+
+function buildNeedsChips() {
+  const el = document.getElementById('needs-chips');
+  el.innerHTML = '';
+  NEEDS_PRESETS.forEach(n => {
+    const c = document.createElement('button');
+    c.className = 'chip';
+    c.textContent = n;
+    c.dataset.tag = n;
+    c.onclick = () => toggleChip(c, selectedNeeds, n);
+    el.appendChild(c);
+  });
+}
+
+function toggleChip(el, set, val) {
+  if (set.has(val)) { set.delete(val); el.classList.remove('selected'); }
+  else { set.add(val); el.classList.add('selected'); }
+}
+
+function addCustomTag() {
+  const inp = document.getElementById('custom-tag-input');
+  const val = inp.value.trim();
+  if (!val || customTriggers.includes(val)) { inp.value = ''; return; }
+  customTriggers.push(val);
+  inp.value = '';
+  updateCustomTriggerChips();
+}
+
+function updateCustomTriggerChips() {
+  const el = document.getElementById('custom-trigger-chips');
+  el.innerHTML = '';
+  customTriggers.forEach(t => {
+    const c = document.createElement('button');
+    c.className = 'chip selected';
+    c.innerHTML = t + ' <span style="opacity:.6">✕</span>';
+    c.onclick = () => { customTriggers = customTriggers.filter(x => x !== t); updateCustomTriggerChips(); };
+    el.appendChild(c);
+  });
+}
+
+function updateWizardUI() {
+  const step = wizardStep;
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById('step-' + step).classList.add('active');
+  document.getElementById('wizard-step-label').textContent = `ステップ ${step} / 6`;
+  document.getElementById('progress-fill').style.width = (step / 6 * 100) + '%';
+
+  const titles = ['','日時','出来事','解釈','感情','トリガー','ニーズ'];
+  document.getElementById('wizard-title').textContent = titles[step];
+
+  const btnBack = document.getElementById('btn-back');
+  const btnNext = document.getElementById('btn-next');
+  btnBack.style.display = step === 1 ? 'none' : '';
+  if (step === 6) { btnNext.textContent = '💾 保存する'; }
+  else if (step >= 5) { btnNext.textContent = 'スキップ →'; }
+  else { btnNext.textContent = '次へ →'; }
+}
+
+function wizardNext() {
+  if (wizardStep === 1) {
+    const val = document.getElementById('input-event-date').value;
+    wizardData.eventDate = val ? new Date(val).toISOString() : new Date().toISOString();
+  } else if (wizardStep === 2) {
+    const val = document.getElementById('input-event').value.trim();
+    if (!val) { showToast('出来事を入力してください'); return; }
+    wizardData.event = val;
+  } else if (wizardStep === 3) {
+    const val = document.getElementById('input-interpretation').value.trim();
+    if (!val) { showToast('解釈を入力してください'); return; }
+    wizardData.interpretation = val;
+  } else if (wizardStep === 4) {
+    if (!selectedEmoCategory) { showToast('感情カテゴリーを選んでください'); return; }
+    if (!selectedEmoSub) { showToast('細かい感情を選んでください'); return; }
+    wizardData.emotion = {
+      category: selectedEmoCategory,
+      subcategory: selectedEmoSub,
+      intensity: parseInt(document.getElementById('intensity-slider').value)
+    };
+  } else if (wizardStep === 5) {
+    wizardData.triggers = [...selectedTriggers];
+    wizardData.customTriggers = [...customTriggers];
+  } else if (wizardStep === 6) {
+    wizardData.needs = [...selectedNeeds];
+    wizardData.needsText = document.getElementById('input-needs-text').value.trim();
+    saveRecord();
+    return;
+  }
+  wizardStep++;
+  updateWizardUI();
+}
+
+function wizardBack() {
+  if (wizardStep === 1) { showScreen('home'); return; }
+  wizardStep--;
+  updateWizardUI();
+}
+
+function saveRecord() {
+  const entries = loadEntries();
+  const entry = {
+    id: editingId || genId(),
+    date: new Date().toISOString(),
+    ...wizardData
+  };
+  if (editingId) {
+    const idx = entries.findIndex(e => e.id === editingId);
+    if (idx >= 0) entries[idx] = entry;
+  } else {
+    entries.unshift(entry);
+  }
+  saveEntries(entries);
+  showToast('記録を保存しました ✓');
+  showScreen('list');
+}
+
+// ============================
+// LIST
+// ============================
+function renderList() {
+  const entries = loadEntries();
+  const el = document.getElementById('list-content');
+  if (!entries.length) {
+    el.innerHTML = `<div class="list-empty"><div class="empty-icon">📭</div><p>まだ記録がありません</p></div>`;
+    return;
+  }
+  el.innerHTML = entries.map(e => {
+    const d = new Date(e.eventDate || e.date);
+    const dateStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    const emo = EMOTIONS[e.emotion?.category] || {};
+    const intensity = e.emotion?.intensity || 0;
+    const dots = Array.from({length:5},(_,i)=>`<span class="intensity-dot${i<intensity?' filled':''}"></span>`).join('');
+    return `<div class="record-card" onclick="showDetail('${e.id}')">
+      <div class="record-card-header">
+        <span class="record-date">${dateStr}</span>
+        ${e.emotion?.category ? `<span class="emo-badge">${emo.icon||''} ${e.emotion.category}</span>` : ''}
+        <span class="intensity-dots" style="margin-left:auto">${dots}</span>
+      </div>
+      <div class="record-event">${escHtml(e.event)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ============================
+// DETAIL
+// ============================
+function showDetail(id) {
+  const entries = loadEntries();
+  const e = entries.find(x => x.id === id);
+  if (!e) return;
+  const d = new Date(e.eventDate || e.date);
+  const dateStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  const rec = new Date(e.date);
+  const recStr = e.eventDate
+    ? `記録：${rec.getFullYear()}/${String(rec.getMonth()+1).padStart(2,'0')}/${String(rec.getDate()).padStart(2,'0')} ${String(rec.getHours()).padStart(2,'0')}:${String(rec.getMinutes()).padStart(2,'0')}`
+    : '';
+  const emo = EMOTIONS[e.emotion?.category] || {};
+  const intensity = e.emotion?.intensity || 0;
+  const fillPct = (intensity / 5 * 100) + '%';
+  const trigAll = [...(e.triggers||[]), ...(e.customTriggers||[])];
+  const needsAll = e.needs || [];
+
+  document.getElementById('detail-content').innerHTML = `
+    <div class="detail-header-bar">
+      <button class="btn btn-ghost" onclick="showScreen('list')">← 一覧</button>
+      <div>
+        <div class="detail-date">${dateStr}</div>
+        ${recStr ? `<div style="font-size:0.75em;color:var(--text2);margin-top:2px;">${recStr}</div>` : ''}
+      </div>
+    </div>
+    ${e.emotion?.category ? `
+    <div class="detail-section">
+      <label>感情</label>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <span style="font-size: 1.75em;">${emo.icon||''}</span>
+        <div>
+          <div style="font-size: 1.062em;font-weight:700;">${e.emotion.category}</div>
+          <div style="font-size: 0.875em;color:var(--text2);">${e.emotion.subcategory||''}</div>
+        </div>
+      </div>
+      <div class="detail-intensity">
+        <span style="font-size: 0.8125em;color:var(--text2);">強さ</span>
+        <div class="detail-intensity-bar"><div class="detail-intensity-fill" style="width:${fillPct};background:${emo.color||'var(--accent)'}"></div></div>
+        <span style="font-size: 0.9375em;font-weight:700;color:${emo.color||'var(--accent)'};">${intensity}</span>
+      </div>
+    </div>` : ''}
+    <div class="detail-section">
+      <label>出来事</label>
+      <p>${escHtml(e.event)}</p>
+    </div>
+    <div class="detail-section">
+      <label>解釈・受け取り方</label>
+      <p>${escHtml(e.interpretation)}</p>
+    </div>
+    ${trigAll.length ? `
+    <div class="detail-section">
+      <label>トリガー</label>
+      <div class="chips-row">${trigAll.map(t=>`<span class="chip">${escHtml(t)}</span>`).join('')}</div>
+    </div>` : ''}
+    ${(needsAll.length || e.needsText) ? `
+    <div class="detail-section">
+      <label>ニーズ</label>
+      ${needsAll.length ? `<div class="chips-row" style="margin-bottom:8px;">${needsAll.map(n=>`<span class="chip">${escHtml(n)}</span>`).join('')}</div>` : ''}
+      ${e.needsText ? `<p>${escHtml(e.needsText)}</p>` : ''}
+    </div>` : ''}
+    <div class="detail-actions">
+      <button class="btn btn-danger btn-sm" onclick="deleteEntry('${e.id}')">🗑 削除</button>
+    </div>
+  `;
+  showScreen('detail');
+}
+
+function deleteEntry(id) {
+  if (!confirm('この記録を削除しますか？')) return;
+  let entries = loadEntries().filter(e => e.id !== id);
+  saveEntries(entries);
+  showToast('削除しました');
+  showScreen('list');
+}
+
+// ============================
+// GRAPH
+// ============================
+let currentRange = 7;
+const EMO_COLORS = Object.fromEntries(Object.entries(EMOTIONS).map(([k,v])=>[k,v.color]));
+
+function setGraphRange(btn, range) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentRange = range;
+  renderGraph(range);
+}
+
+function renderGraph(rangeDays) {
+  const canvas = document.getElementById('graph-canvas');
+  const ctx = canvas.getContext('2d');
+  const entries = loadEntries();
+
+  const now = Date.now();
+  const cutoff = rangeDays ? now - rangeDays * 86400000 : 0;
+  const filtered = entries.filter(e => new Date(e.date).getTime() >= cutoff)
+    .filter(e => e.emotion?.category)
+    .sort((a,b) => new Date(a.date) - new Date(b.date));
+
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.offsetWidth - 0;
+  const H = 260;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  ctx.scale(dpr, dpr);
+
+  const PAD = { top: 20, right: 16, bottom: 36, left: 32 };
+  const plotW = W - PAD.left - PAD.right;
+  const plotH = H - PAD.top - PAD.bottom;
+
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const gridColor = isDark ? '#3a3733' : '#e0dbd3';
+  const textColor = isDark ? '#9a9590' : '#6b6560';
+  const bgColor = isDark ? '#1e1c1a' : '#ffffff';
+
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, W, H);
+
+  // Y axis gridlines (1–5)
+  for (let y = 1; y <= 5; y++) {
+    const py = PAD.top + plotH - ((y - 1) / 4) * plotH;
+    ctx.strokeStyle = gridColor;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(PAD.left, py); ctx.lineTo(PAD.left + plotW, py); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = textColor;
+    ctx.font = `11px sans-serif`;
+    ctx.textAlign = 'right';
+    ctx.fillText(y, PAD.left - 4, py + 4);
+  }
+
+  if (!filtered.length) {
+    ctx.fillStyle = textColor;
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('この期間の記録がありません', W / 2, H / 2);
+    document.getElementById('graph-legend').innerHTML = '';
+    return;
+  }
+
+  const times = filtered.map(e => new Date(e.date).getTime());
+  const minT = times[0];
+  const maxT = times[times.length - 1];
+  const rangeT = maxT - minT || 1;
+
+  // Group by category and draw lines
+  const byCat = {};
+  filtered.forEach(e => {
+    if (!byCat[e.emotion.category]) byCat[e.emotion.category] = [];
+    byCat[e.emotion.category].push(e);
+  });
+
+  const usedCats = Object.keys(byCat);
+
+  usedCats.forEach(cat => {
+    const pts = byCat[cat];
+    const color = EMO_COLORS[cat] || '#888';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    pts.forEach((e, i) => {
+      const t = new Date(e.date).getTime();
+      const x = PAD.left + ((t - minT) / rangeT) * plotW;
+      const y = PAD.top + plotH - ((e.emotion.intensity - 1) / 4) * plotH;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    pts.forEach(e => {
+      const t = new Date(e.date).getTime();
+      const x = PAD.left + ((t - minT) / rangeT) * plotW;
+      const y = PAD.top + plotH - ((e.emotion.intensity - 1) / 4) * plotH;
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = bgColor;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    });
+  });
+
+  // X axis date labels (time-based, not entry-based)
+  ctx.fillStyle = textColor;
+  ctx.font = '10px sans-serif';
+  const numTicks = rangeT < 86400000 ? 1 : 3;
+  for (let i = 0; i < numTicks; i++) {
+    const frac = numTicks === 1 ? 0 : i / (numTicks - 1);
+    const t = minT + frac * rangeT;
+    const x = PAD.left + frac * plotW;
+    const d = new Date(t);
+    ctx.textAlign = i === 0 ? 'left' : i === numTicks - 1 ? 'right' : 'center';
+    ctx.fillText(`${d.getMonth()+1}/${d.getDate()}`, x, H - 6);
+  }
+
+  // Legend
+  const legendEl = document.getElementById('graph-legend');
+  legendEl.innerHTML = usedCats.map(cat => {
+    const emo = EMOTIONS[cat];
+    return `<span class="legend-item"><span class="legend-dot" style="background:${EMO_COLORS[cat]}"></span>${emo?.icon||''} ${cat}</span>`;
+  }).join('');
+}
+
+// ============================
+// GRAPH TAB / ANALYSIS
+// ============================
+function switchGraphTab(tab) {
+  currentGraphTab = tab;
+  document.querySelectorAll('.graph-tab-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+  document.getElementById('graph-tab-chart').style.display = tab === 'chart' ? '' : 'none';
+  document.getElementById('graph-tab-analysis').style.display = tab === 'analysis' ? '' : 'none';
+  if (tab === 'chart') renderGraph(currentRange);
+  if (tab === 'analysis') renderAnalysis(currentAnalysisRange);
+}
+
+function setAnalysisRange(btn, days) {
+  document.querySelectorAll('#analysis-filters .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentAnalysisRange = days;
+  renderAnalysis(days);
+}
+
+function renderAnalysis(days) {
+  const el = document.getElementById('analysis-content');
+  const allEntries = loadEntries();
+  const now = Date.now();
+  const cutoff = days > 0 ? now - days * 86400000 : 0;
+  const entries = allEntries.filter(e => new Date(e.date).getTime() >= cutoff);
+
+  if (!entries.length) {
+    el.innerHTML = '<div class="list-empty"><div class="empty-icon">📭</div><p>この期間の記録がありません</p></div>';
+    return;
+  }
+
+  const withEmo = entries.filter(e => e.emotion?.category);
+
+  // 1. Emotion counts
+  const catCounts = {};
+  const subCounts = {};
+  withEmo.forEach(e => {
+    catCounts[e.emotion.category] = (catCounts[e.emotion.category] || 0) + 1;
+    if (e.emotion.subcategory) subCounts[e.emotion.subcategory] = (subCounts[e.emotion.subcategory] || 0) + 1;
+  });
+  const sortedCats = Object.entries(catCounts).sort((a,b)=>b[1]-a[1]);
+  const sortedSubs = Object.entries(subCounts).sort((a,b)=>b[1]-a[1]);
+  const maxCat = sortedCats[0]?.[1] || 1;
+
+  // 2. Intensity avg + trend
+  const withInt = withEmo.filter(e => e.emotion.intensity);
+  const avgInt = withInt.length
+    ? (withInt.reduce((s,e)=>s+e.emotion.intensity,0)/withInt.length).toFixed(1)
+    : null;
+  let trendText = '';
+  if (withInt.length >= 4) {
+    const sorted = [...withInt].sort((a,b)=>new Date(a.date)-new Date(b.date));
+    const h = Math.floor(sorted.length/2);
+    const avg1 = sorted.slice(0,h).reduce((s,e)=>s+e.emotion.intensity,0)/h;
+    const avg2 = sorted.slice(h).reduce((s,e)=>s+e.emotion.intensity,0)/(sorted.length-h);
+    if (avg2 > avg1 + 0.3) trendText = '<br><span style="font-size:0.8125em;color:var(--text2);">後半に向けて強度が上昇しています。</span>';
+    else if (avg2 < avg1 - 0.3) trendText = '<br><span style="font-size:0.8125em;color:var(--text2);">後半に向けて強度が低下しています。</span>';
+    else trendText = '<br><span style="font-size:0.8125em;color:var(--text2);">期間を通じて強度は横ばいです。</span>';
+  }
+
+  // 3. Triggers
+  const trigCounts = {};
+  entries.forEach(e => [...(e.triggers||[]), ...(e.customTriggers||[])].forEach(t => {
+    trigCounts[t] = (trigCounts[t] || 0) + 1;
+  }));
+  const sortedTrigs = Object.entries(trigCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  // 4. Needs
+  const needsCounts = {};
+  entries.forEach(e => (e.needs||[]).forEach(n => {
+    needsCounts[n] = (needsCounts[n] || 0) + 1;
+  }));
+  const sortedNeeds = Object.entries(needsCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  // 5. Day of week / time slot
+  const DAY_JP = ['日','月','火','水','木','金','土'];
+  const SLOT_JP = ['深夜 0〜5時','朝 6〜11時','昼 12〜17時','夜 18〜23時'];
+  const dayData = Array.from({length:7},()=>({sum:0,count:0}));
+  const slotData = Array.from({length:4},()=>({sum:0,count:0}));
+  withEmo.forEach(e => {
+    const d = new Date(e.eventDate || e.date);
+    dayData[d.getDay()].sum += e.emotion.intensity;
+    dayData[d.getDay()].count++;
+    const slot = Math.floor(d.getHours()/6);
+    slotData[slot].sum += e.emotion.intensity;
+    slotData[slot].count++;
+  });
+  const dayAvgs = dayData.map((d,i)=>({name:DAY_JP[i],avg:d.count?d.sum/d.count:null,count:d.count}))
+    .filter(d=>d.avg!==null).sort((a,b)=>b.avg-a.avg);
+  const slotAvgs = slotData.map((s,i)=>({name:SLOT_JP[i],avg:s.count?s.sum/s.count:null,count:s.count}))
+    .filter(s=>s.avg!==null).sort((a,b)=>b.avg-a.avg);
+
+  // 6. Frequency
+  const sorted0 = [...entries].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const span = days > 0 ? days : Math.max(1, (now - new Date(sorted0[0].date).getTime()) / 86400000);
+  const perWeek = (entries.length / span * 7).toFixed(1);
+  const perMonth = (entries.length / span * 30).toFixed(1);
+  const freqText = `この期間の記録は <strong>${entries.length}件</strong> です。週平均 ${perWeek} 件、月平均 ${perMonth} 件のペースです。`;
+
+  // Render helpers
+  const rankRow = (item, i, maxVal, color) => `
+    <div class="analysis-row">
+      <span class="analysis-row-rank">${i+1}</span>
+      <span class="analysis-row-label">${escHtml(item[0])}</span>
+      <div class="analysis-bar-wrap"><div class="analysis-bar" style="width:${Math.round(item[1]/maxVal*100)}%;${color?'background:'+color:''}"></div></div>
+      <span class="analysis-row-val">${item[1]}件</span>
+    </div>`;
+
+  const dayRow = (d, maxAvg) => `
+    <div class="analysis-row">
+      <span class="analysis-row-rank">${d.name}</span>
+      <span class="analysis-row-label" style="color:var(--text2);font-size:0.8125em;">${d.count}件</span>
+      <div class="analysis-bar-wrap"><div class="analysis-bar" style="width:${Math.round(d.avg/maxAvg*100)}%"></div></div>
+      <span class="analysis-row-val">${d.avg.toFixed(1)}</span>
+    </div>`;
+
+  const slotRow = (s, maxAvg) => `
+    <div class="analysis-row">
+      <span class="analysis-row-label">${s.name}</span>
+      <span style="font-size:0.75em;color:var(--text2);white-space:nowrap;margin-right:2px;">${s.count}件</span>
+      <div class="analysis-bar-wrap"><div class="analysis-bar" style="width:${Math.round(s.avg/maxAvg*100)}%"></div></div>
+      <span class="analysis-row-val">${s.avg.toFixed(1)}</span>
+    </div>`;
+
+  el.innerHTML = `
+    <div class="analysis-section">
+      <h4>感情の記録数（上位）</h4>
+      ${sortedCats.length
+        ? sortedCats.slice(0,5).map((c,i) => {
+            const emo = EMOTIONS[c[0]];
+            return `<div class="analysis-row">
+              <span class="analysis-row-rank">${i+1}</span>
+              <span class="analysis-row-label">${emo?.icon||''} ${c[0]}</span>
+              <div class="analysis-bar-wrap"><div class="analysis-bar" style="width:${Math.round(c[1]/maxCat*100)}%;background:${emo?.color||'var(--accent)'}"></div></div>
+              <span class="analysis-row-val">${c[1]}件</span>
+            </div>`;
+          }).join('')
+        : '<p class="analysis-fact" style="color:var(--text2);">感情の記録がありません。</p>'
+      }
+      ${sortedSubs.length ? `<p style="margin-top:8px;font-size:0.8125em;color:var(--text2);">最多の細分類：${escHtml(sortedSubs[0][0])}（${sortedSubs[0][1]}件）</p>` : ''}
+    </div>
+
+    ${avgInt ? `<div class="analysis-section">
+      <h4>感情の強度</h4>
+      <p class="analysis-fact">平均強度は <strong>${avgInt}</strong> / 5 です。${trendText}</p>
+    </div>` : ''}
+
+    ${sortedTrigs.length ? `<div class="analysis-section">
+      <h4>トリガータグ（上位${sortedTrigs.length}件）</h4>
+      ${sortedTrigs.map((t,i)=>rankRow(t,i,sortedTrigs[0][1])).join('')}
+    </div>` : ''}
+
+    ${sortedNeeds.length ? `<div class="analysis-section">
+      <h4>ニーズ（上位${sortedNeeds.length}件）</h4>
+      ${sortedNeeds.map((n,i)=>rankRow(n,i,sortedNeeds[0][1])).join('')}
+    </div>` : ''}
+
+    ${dayAvgs.length ? `<div class="analysis-section">
+      <h4>曜日別の平均強度</h4>
+      ${dayAvgs.map(d=>dayRow(d,dayAvgs[0].avg)).join('')}
+    </div>` : ''}
+
+    ${slotAvgs.length ? `<div class="analysis-section">
+      <h4>時間帯別の平均強度</h4>
+      ${slotAvgs.map(s=>slotRow(s,slotAvgs[0].avg)).join('')}
+    </div>` : ''}
+
+    <div class="analysis-section">
+      <h4>記録の頻度</h4>
+      <p class="analysis-fact">${freqText}</p>
+    </div>
+  `;
+}
+
+// ============================
+// EXPORT / IMPORT
+// ============================
+function exportJSON() {
+  const entries = loadEntries();
+  const blob = new Blob([JSON.stringify(entries, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const d = new Date();
+  a.download = `jibunlog_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('JSONをダウンロードしました');
+}
+
+function exportHTML() {
+  let entries = loadEntries();
+  let periodLabel;
+  if (exportMonthKey) {
+    const [y, m] = exportMonthKey.split('-').map(Number);
+    entries = entries.filter(e => {
+      const d = new Date(e.date);
+      return d.getFullYear() === y && d.getMonth() + 1 === m;
+    });
+    periodLabel = `${y}年${m}月`;
+  } else {
+    periodLabel = exportPeriodDays === 0 ? '全期間'
+      : exportPeriodDays === 7 ? '直近1週間'
+      : exportPeriodDays === 30 ? '直近1ヶ月' : '直近3ヶ月';
+    if (exportPeriodDays > 0) {
+      const cutoff = Date.now() - exportPeriodDays * 86400000;
+      entries = entries.filter(e => new Date(e.date).getTime() >= cutoff);
+    }
+  }
+
+  const graphScreen = document.getElementById('screen-graph');
+  const origDisplay = graphScreen.style.display;
+  graphScreen.style.display = 'flex';
+  renderGraph(exportMonthKey ? 31 : exportPeriodDays === 0 ? 9999 : exportPeriodDays);
+  const canvas = document.getElementById('graph-canvas');
+  const graphDataURL = canvas.width > 0 ? canvas.toDataURL('image/png') : null;
+  graphScreen.style.display = origDisplay;
+
+  const rows = entries.map(e => {
+    const d = new Date(e.date);
+    const dateStr = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+    const emo = EMOTIONS[e.emotion?.category] || {};
+    const trigAll = [...(e.triggers||[]), ...(e.customTriggers||[])].join('・');
+    const needsAll = (e.needs||[]).join('・');
+    return `<tr>
+      <td>${dateStr}</td>
+      <td>${e.emotion?.category ? emo.icon + ' ' + e.emotion.category + '（' + e.emotion.subcategory + '）強さ' + e.emotion.intensity : ''}</td>
+      <td>${escHtml(e.event)}</td>
+      <td>${escHtml(e.interpretation)}</td>
+      <td>${trigAll}</td>
+      <td>${needsAll}${e.needsText ? (needsAll?'<br>':'') + escHtml(e.needsText) : ''}</td>
+    </tr>`;
+  }).join('');
+
+  const graphSection = graphDataURL
+    ? `<h2 style="font-size:1em;margin:24px 0 10px;">感情の流れ（${periodLabel}）</h2>
+       <img src="${graphDataURL}" style="width:100%;max-width:700px;border-radius:8px;border:1px solid #ddd;" alt="感情グラフ">`
+    : '';
+
+  const userName = loadName();
+  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>じぶんログ 共有レポート</title>
+<style>body{font-family:-apple-system,sans-serif;padding:24px;max-width:800px;margin:0 auto;color:#1a1714;}
+table{border-collapse:collapse;width:100%;}
+th,td{border:1px solid #ddd;padding:8px 10px;font-size:0.8125em;vertical-align:top;}
+th{background:#f0ede8;font-weight:700;}tr:nth-child(even){background:#faf9f7;}</style>
+</head><body>
+<h1 style="font-size:1.25em;margin-bottom:4px;">📓 じぶんログ 共有レポート${userName ? '（' + escHtml(userName) + '）' : ''}</h1>
+<p style="color:#888;font-size:0.8125em;margin-bottom:16px;">出力日：${new Date().toLocaleDateString('ja-JP')}　${periodLabel}　${entries.length}件</p>
+${graphSection}
+<h2 style="font-size:1em;margin:24px 0 10px;">記録一覧</h2>
+<table><thead><tr><th>日付</th><th>感情</th><th>出来事</th><th>解釈</th><th>トリガー</th><th>ニーズ</th></tr></thead>
+<tbody>${rows}</tbody></table></body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `jibunlog_share_${new Date().toISOString().slice(0,10)}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('共有レポートを生成しました');
+}
+
+function importJSON(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!Array.isArray(imported)) throw new Error();
+      const existing = loadEntries();
+      const existingIds = new Set(existing.map(x => x.id));
+      const newOnes = imported.filter(x => !existingIds.has(x.id));
+      saveEntries([...existing, ...newOnes]);
+      showToast(`${newOnes.length}件のデータを取り込みました`);
+      evt.target.value = '';
+    } catch {
+      showToast('JSONの読み込みに失敗しました');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function confirmClearAll() {
+  if (!confirm('全ての記録を削除しますか？この操作は取り消せません。')) return;
+  saveEntries([]);
+  showToast('全データを削除しました');
+}
+
+// ============================
+// UTILS
+// ============================
+function escHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/\n/g,'<br>');
+}
+
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ============================
+// INIT
+// ============================
+function getEffectiveTheme() {
+  const stored = localStorage.getItem('theme');
+  if (stored) return stored;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+function updateThemeBtn() {
+  const cb = document.getElementById('theme-checkbox');
+  if (cb) cb.checked = getEffectiveTheme() === 'dark';
+}
+function toggleTheme() {
+  const next = getEffectiveTheme() === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  updateThemeBtn();
+}
+
+function getEffectiveFontSize() {
+  return localStorage.getItem('fontsize') || 'normal';
+}
+function updateFontToggle() {
+  const cb = document.getElementById('font-checkbox');
+  if (cb) cb.checked = getEffectiveFontSize() === 'large';
+}
+function toggleFontSize() {
+  const next = getEffectiveFontSize() === 'large' ? 'normal' : 'large';
+  document.documentElement.setAttribute('data-fontsize', next);
+  localStorage.setItem('fontsize', next);
+  updateFontToggle();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const stored = localStorage.getItem('theme');
+  if (stored) document.documentElement.setAttribute('data-theme', stored);
+  updateThemeBtn();
+  const storedFont = localStorage.getItem('fontsize');
+  if (storedFont) document.documentElement.setAttribute('data-fontsize', storedFont);
+  updateFontToggle();
+  showScreen('home');
+  document.getElementById('custom-tag-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); addCustomTag(); }
+  });
+  window.addEventListener('resize', () => {
+    if (document.getElementById('screen-graph').classList.contains('active')) {
+      renderGraph(currentRange);
+    }
+  });
+});
+</script>
+</body>
+</html>
