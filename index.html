@@ -607,6 +607,10 @@ input[type=range]::-webkit-slider-thumb {
             <div class="nav-desc">共有・移行・削除</div>
           </div>
         </div>
+        <p style="font-size:0.8125em;color:var(--text2);line-height:1.8;margin-top:16px;padding:0 4px;text-align:center;">
+          何か感じたことがあれば、そのときすぐに記録を。<br>
+          何もなかった日は、仕事の終わり・帰宅後・寝る前などに振り返ってみましょう。
+        </p>
       </div>
     </div>
   </main>
@@ -619,9 +623,17 @@ input[type=range]::-webkit-slider-thumb {
         <div class="wizard-title" id="wizard-title">新しく記録する</div>
         <div class="wizard-step-label" id="wizard-step-label">ステップ 1 / 5</div>
       </div>
-      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:20%"></div></div>
+      <div class="progress-bar" id="wizard-progress-bar"><div class="progress-fill" id="progress-fill" style="width:20%"></div></div>
     </div>
     <div class="wizard-content">
+      <!-- Step 0: Branch -->
+      <div class="step" id="step-0">
+        <div class="step-question" style="text-align:center;margin-bottom:24px;">今日は何かありましたか？</div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <button class="btn btn-primary" style="padding:18px;font-size:1em;" onclick="chooseRecordMode('full')">はい（詳しく記録する）</button>
+          <button class="btn btn-secondary" style="padding:18px;font-size:1em;" onclick="chooseRecordMode('light')">特になかった（気持ちだけ記録）</button>
+        </div>
+      </div>
       <!-- Step 1: Event datetime -->
       <div class="step active" id="step-1">
         <div class="step-question">いつ頃の出来事ですか？</div>
@@ -840,7 +852,8 @@ function getCurrentDateTimeLocal() {
 // ============================
 // WIZARD STATE
 // ============================
-let wizardStep = 1;
+let wizardStep = 0;
+let isLightMode = false;
 let wizardData = {};
 let exportPeriodDays = 30;
 let exportMonthKey = null;
@@ -935,7 +948,8 @@ function selectExportMonth(monthKey) {
 // WIZARD
 // ============================
 function startNew() {
-  wizardStep = 1;
+  wizardStep = 0;
+  isLightMode = false;
   wizardData = {};
   selectedEmoCategory = null;
   selectedEmoSub = null;
@@ -999,8 +1013,29 @@ function selectEmoSub(sub, el) {
   selectedEmoSub = sub;
   document.querySelectorAll('#subcategory-chips .chip').forEach(c => c.classList.remove('selected'));
   el.classList.add('selected');
-  document.getElementById('intensity-section').classList.add('visible');
-  updateIntensity();
+  if (!isLightMode) {
+    document.getElementById('intensity-section').classList.add('visible');
+    updateIntensity();
+  }
+}
+
+function chooseRecordMode(mode) {
+  isLightMode = mode === 'light';
+  document.getElementById('input-event-date').value = getCurrentDateTimeLocal();
+  if (isLightMode) {
+    wizardData.eventDate = new Date().toISOString();
+    wizardData.event = '';
+    wizardData.interpretation = '';
+    wizardData.triggers = [];
+    wizardData.customTriggers = [];
+    wizardData.needs = [];
+    wizardData.needsText = '';
+    wizardData.isLightMode = true;
+    document.getElementById('intensity-section').classList.remove('visible');
+    document.getElementById('subcategory-section').classList.remove('visible');
+  }
+  wizardStep = isLightMode ? 4 : 1;
+  updateWizardUI();
 }
 
 function updateIntensity() {
@@ -1065,18 +1100,25 @@ function updateWizardUI() {
   const step = wizardStep;
   document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
   document.getElementById('step-' + step).classList.add('active');
-  document.getElementById('wizard-step-label').textContent = `ステップ ${step} / 6`;
-  document.getElementById('progress-fill').style.width = (step / 6 * 100) + '%';
 
+  const isStep0 = step === 0;
+  document.getElementById('wizard-step-label').style.visibility = isStep0 ? 'hidden' : '';
+  document.getElementById('wizard-progress-bar').style.visibility = isStep0 ? 'hidden' : '';
+  document.querySelector('.wizard-footer').style.display = isStep0 ? 'none' : '';
   const titles = ['','日時','出来事','解釈','感情','トリガー','ニーズ'];
-  document.getElementById('wizard-title').textContent = titles[step];
+  document.getElementById('wizard-title').textContent = isStep0 ? '' : titles[step];
 
-  const btnBack = document.getElementById('btn-back');
-  const btnNext = document.getElementById('btn-next');
-  btnBack.style.display = step === 1 ? 'none' : '';
-  if (step === 6) { btnNext.textContent = '💾 保存する'; }
-  else if (step >= 5) { btnNext.textContent = 'スキップ →'; }
-  else { btnNext.textContent = '次へ →'; }
+  if (!isStep0) {
+    document.getElementById('wizard-step-label').textContent = `ステップ ${step} / 6`;
+    document.getElementById('progress-fill').style.width = (step / 6 * 100) + '%';
+    const btnBack = document.getElementById('btn-back');
+    const btnNext = document.getElementById('btn-next');
+    const isLightStep = isLightMode && step === 4;
+    btnBack.style.display = (step === 1 || isLightStep) ? 'none' : '';
+    if (step === 6 || isLightStep) { btnNext.textContent = '💾 保存する'; }
+    else if (step >= 5) { btnNext.textContent = 'スキップ →'; }
+    else { btnNext.textContent = '次へ →'; }
+  }
 }
 
 function wizardNext() {
@@ -1097,8 +1139,9 @@ function wizardNext() {
     wizardData.emotion = {
       category: selectedEmoCategory,
       subcategory: selectedEmoSub,
-      intensity: parseInt(document.getElementById('intensity-slider').value)
+      intensity: isLightMode ? 3 : parseInt(document.getElementById('intensity-slider').value)
     };
+    if (isLightMode) { saveRecord(); return; }
   } else if (wizardStep === 5) {
     wizardData.triggers = [...selectedTriggers];
     wizardData.customTriggers = [...customTriggers];
@@ -1113,7 +1156,10 @@ function wizardNext() {
 }
 
 function wizardBack() {
-  if (wizardStep === 1) { showScreen('home'); return; }
+  if (wizardStep === 0) { showScreen('home'); return; }
+  if (wizardStep === 1 || (isLightMode && wizardStep === 4)) {
+    wizardStep = 0; updateWizardUI(); return;
+  }
   wizardStep--;
   updateWizardUI();
 }
