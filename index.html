@@ -1315,9 +1315,9 @@ function renderGraph(rangeDays) {
 
   const now = Date.now();
   const cutoff = rangeDays ? now - rangeDays * 86400000 : 0;
-  const filtered = entries.filter(e => new Date(e.date).getTime() >= cutoff)
+  const filtered = entries.filter(e => new Date(e.eventDate || e.date).getTime() >= cutoff)
     .filter(e => e.emotion?.category)
-    .sort((a,b) => new Date(a.date) - new Date(b.date));
+    .sort((a,b) => new Date(a.eventDate || a.date) - new Date(b.eventDate || b.date));
 
   const dpr = window.devicePixelRatio || 1;
   const W = canvas.parentElement.offsetWidth - 0;
@@ -1363,7 +1363,7 @@ function renderGraph(rangeDays) {
     return;
   }
 
-  const times = filtered.map(e => new Date(e.date).getTime());
+  const times = filtered.map(e => new Date(e.eventDate || e.date).getTime());
   const minT = times[0];
   const maxT = times[times.length - 1];
   const rangeT = maxT - minT || 1;
@@ -1386,14 +1386,14 @@ function renderGraph(rangeDays) {
     ctx.setLineDash([]);
     ctx.beginPath();
     pts.forEach((e, i) => {
-      const t = new Date(e.date).getTime();
+      const t = new Date(e.eventDate || e.date).getTime();
       const x = PAD.left + ((t - minT) / rangeT) * plotW;
       const y = PAD.top + plotH - ((e.emotion.intensity - 1) / 4) * plotH;
       if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     });
     ctx.stroke();
     pts.forEach(e => {
-      const t = new Date(e.date).getTime();
+      const t = new Date(e.eventDate || e.date).getTime();
       const x = PAD.left + ((t - minT) / rangeT) * plotW;
       const y = PAD.top + plotH - ((e.emotion.intensity - 1) / 4) * plotH;
       ctx.beginPath();
@@ -1655,10 +1655,10 @@ function exportHTML() {
     const needsAll = (e.needs||[]).join('・');
     return `<tr>
       <td>${dateStr}</td>
-      <td>${e.emotion?.category ? emo.icon + ' ' + e.emotion.category + '（' + e.emotion.subcategory + '）強さ' + e.emotion.intensity : ''}</td>
+      <td style="white-space:nowrap">${e.emotion?.category ? emo.icon + ' ' + e.emotion.category + '（' + e.emotion.subcategory + '）強さ' + e.emotion.intensity : ''}</td>
       <td>${escHtml(e.event)}</td>
       <td>${escHtml(e.interpretation)}</td>
-      <td>${trigAll}</td>
+      <td style="white-space:nowrap">${trigAll}</td>
       <td>${needsAll}${e.needsText ? (needsAll?'<br>':'') + escHtml(e.needsText) : ''}</td>
     </tr>`;
   }).join('');
