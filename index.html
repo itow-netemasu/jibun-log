@@ -1649,16 +1649,16 @@ function exportHTML() {
 
   const rows = entries.map(e => {
     const d = new Date(e.eventDate || e.date);
-    const dateStr = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+    const dateStr = `${d.getFullYear()}/<br>${d.getMonth()+1}/${d.getDate()}`;
     const emo = EMOTIONS[e.emotion?.category] || {};
-    const trigAll = [...(e.triggers||[]), ...(e.customTriggers||[])].join('・');
+    const trigAll = [...(e.triggers||[]), ...(e.customTriggers||[])].join('<br>');
     const needsAll = (e.needs||[]).join('・');
     return `<tr>
-      <td>${dateStr}</td>
+      <td style="white-space:nowrap">${dateStr}</td>
       <td style="white-space:nowrap">${e.emotion?.category ? emo.icon + ' ' + e.emotion.category + '（' + e.emotion.subcategory + '）<br>強さ' + e.emotion.intensity : ''}</td>
       <td>${escHtml(e.event)}</td>
       <td>${escHtml(e.interpretation)}</td>
-      <td style="white-space:nowrap">${trigAll}</td>
+      <td>${trigAll}</td>
       <td>${needsAll}${e.needsText ? (needsAll ? '<br>' : '') + '<span style="color:#666;font-size:0.9em">' + escHtml(e.needsText) + '</span>' : ''}</td>
     </tr>`;
   }).join('');
@@ -1679,7 +1679,7 @@ th{background:#f0ede8;font-weight:700;}tr:nth-child(even){background:#faf9f7;}</
 <p style="color:#888;font-size:0.8125em;margin-bottom:16px;">出力日：${new Date().toLocaleDateString('ja-JP')}　${periodLabel}　${entries.length}件</p>
 ${graphSection}
 <h2 style="font-size:1em;margin:24px 0 10px;">記録一覧</h2>
-<table><thead><tr><th>日付</th><th>感情</th><th>出来事</th><th>解釈</th><th>トリガー</th><th>ニーズ</th></tr></thead>
+<table><colgroup><col style="width:7%"><col style="width:13%"><col style="width:18%"><col style="width:18%"><col style="width:12%"><col style="width:32%"></colgroup><thead><tr><th>日付</th><th>感情</th><th>出来事</th><th>解釈</th><th>トリガー</th><th>ニーズ</th></tr></thead>
 <tbody>${rows}</tbody></table></body></html>`;
 
   const blob = new Blob([html], { type: 'text/html' });
