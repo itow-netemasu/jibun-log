@@ -1648,18 +1648,18 @@ function exportHTML() {
   graphScreen.style.display = origDisplay;
 
   const rows = entries.map(e => {
-    const d = new Date(e.date);
+    const d = new Date(e.eventDate || e.date);
     const dateStr = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
     const emo = EMOTIONS[e.emotion?.category] || {};
     const trigAll = [...(e.triggers||[]), ...(e.customTriggers||[])].join('・');
     const needsAll = (e.needs||[]).join('・');
     return `<tr>
       <td>${dateStr}</td>
-      <td style="white-space:nowrap">${e.emotion?.category ? emo.icon + ' ' + e.emotion.category + '（' + e.emotion.subcategory + '）強さ' + e.emotion.intensity : ''}</td>
+      <td style="white-space:nowrap">${e.emotion?.category ? emo.icon + ' ' + e.emotion.category + '（' + e.emotion.subcategory + '）<br>強さ' + e.emotion.intensity : ''}</td>
       <td>${escHtml(e.event)}</td>
       <td>${escHtml(e.interpretation)}</td>
       <td style="white-space:nowrap">${trigAll}</td>
-      <td>${needsAll}${e.needsText ? (needsAll?'<br>':'') + escHtml(e.needsText) : ''}</td>
+      <td>${needsAll}${e.needsText ? (needsAll ? '<br>' : '') + '<span style="color:#666;font-size:0.9em">' + escHtml(e.needsText) + '</span>' : ''}</td>
     </tr>`;
   }).join('');
 
