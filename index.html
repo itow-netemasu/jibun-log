@@ -267,6 +267,7 @@ textarea:focus { outline: none; border-color: var(--accent); }
 /* Intensity slider */
 .intensity-section { display: none; flex-direction: column; gap: 10px; }
 .intensity-section.visible { display: flex; }
+.light-mode-active .intensity-section { display: none !important; }
 .intensity-label { font-size: 0.8125em; color: var(--text2); font-weight: 600; }
 .intensity-row { display: flex; align-items: center; gap: 12px; }
 input[type=range] {
@@ -825,6 +826,7 @@ const EMOTIONS = {
   '嫌悪':   { icon: '🤢', color: '#6b4226', subs: ['不快','軽蔑','嫌悪感'] },
   '怒り':   { icon: '😠', color: '#e76f51', subs: ['苛立ち','憤り','不満','嫌悪','羨望'] },
   '期待':   { icon: '🤩', color: '#a8dadc', subs: ['興味','好奇心','熱中','熱意'] },
+  'その他': { icon: '🌿', color: '#8d99ae', subs: ['穏やか','わからない'] },
 };
 
 const TRIGGER_PRESETS = ['仕事','家庭','人間関係','言葉','体調','お金','時間','環境','孤独','評価'];
@@ -978,7 +980,12 @@ function startNew() {
 function buildEmotionUI() {
   const catEl = document.getElementById('emotion-categories');
   catEl.innerHTML = '';
-  Object.entries(EMOTIONS).forEach(([name, data]) => {
+  let entries = Object.entries(EMOTIONS);
+  if (isLightMode) {
+    const idx = entries.findIndex(([k]) => k === 'その他');
+    if (idx > 0) entries = [entries[idx], ...entries.filter((_, i) => i !== idx)];
+  }
+  entries.forEach(([name, data]) => {
     const btn = document.createElement('button');
     btn.className = 'emo-cat-btn';
     btn.dataset.cat = name;
@@ -1034,6 +1041,8 @@ function chooseRecordMode(mode) {
     document.getElementById('intensity-section').classList.remove('visible');
     document.getElementById('subcategory-section').classList.remove('visible');
   }
+  const screenNew = document.getElementById('screen-new');
+  screenNew.classList.toggle('light-mode-active', isLightMode);
   wizardStep = isLightMode ? 4 : 1;
   updateWizardUI();
 }
