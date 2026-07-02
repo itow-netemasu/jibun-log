@@ -1992,16 +1992,25 @@ function exportHTML() {
   const graphDataURL = canvas.width > 0 ? canvas.toDataURL('image/png') : null;
   graphScreen.style.display = origDisplay;
 
-  const exportRootIds = new Set(entries.filter(e => !e.parentId).map(e => e.id));
-  const exportChildrenByParent = {};
-  const exportOrphans = [];
+  const exportGroupMap = {};
+  const exportSingles = [];
   entries.forEach(e => {
-    if (!e.parentId) return;
-    if (exportRootIds.has(e.parentId)) {
-      if (!exportChildrenByParent[e.parentId]) exportChildrenByParent[e.parentId] = [];
-      exportChildrenByParent[e.parentId].push(e);
-    } else { exportOrphans.push(e); }
+    if (e.groupId) {
+      if (!exportGroupMap[e.groupId]) exportGroupMap[e.groupId] = [];
+      exportGroupMap[e.groupId].push(e);
+    } else { exportSingles.push(e); }
   });
+  const exportUnits = [];
+  exportSingles.forEach(e => {
+    exportUnits.push({ members: [e], sortKey: new Date(e.eventDate||e.date).getTime() });
+  });
+  Object.values(exportGroupMap).forEach(members => {
+    members.sort((a, b) => new Date(a.eventDate||a.date) - new Date(b.eventDate||b.date));
+    const sortKey = Math.max(...members.map(m => new Date(m.eventDate||m.date).getTime()));
+    exportUnits.push({ members, sortKey });
+  });
+  exportUnits.sort((a, b) => b.sortKey - a.sortKey);
+
   const makeExportRow = (e, isChild) => {
     const d = new Date(e.eventDate || e.date);
     const dateStr = isChild
@@ -2021,13 +2030,11 @@ function exportHTML() {
     </tr>`;
   };
   let rows = '';
-  entries.filter(e => !e.parentId).forEach(e => {
-    rows += makeExportRow(e, false);
-    (exportChildrenByParent[e.id] || [])
-      .sort((a, b) => new Date(a.eventDate||a.date) - new Date(b.eventDate||b.date))
-      .forEach(c => { rows += makeExportRow(c, true); });
+  exportUnits.forEach(unit => {
+    const [root, ...rest] = unit.members;
+    rows += makeExportRow(root, false);
+    rest.forEach(e => { rows += makeExportRow(e, true); });
   });
-  exportOrphans.forEach(e => { rows += makeExportRow(e, false); });
 
   const graphSection = graphDataURL
     ? `<h2 style="font-size:1em;margin:24px 0 10px;">感情の流れ（${periodLabel}）</h2>
