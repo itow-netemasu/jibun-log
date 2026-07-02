@@ -384,6 +384,53 @@ input[type=range]::-webkit-slider-thumb {
 .detail-intensity-fill { height: 100%; background: var(--accent); border-radius: 4px; }
 .detail-actions { display: flex; gap: 10px; margin-top: 24px; }
 
+/* Follow-up / linked records */
+.record-card-child {
+  margin-left: 16px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-light);
+  margin-bottom: 6px;
+}
+.child-badge {
+  font-size: 0.6875em; font-weight: 700; color: var(--accent);
+  background: var(--accent-light); border: 1px solid var(--accent);
+  padding: 1px 7px; border-radius: 10px; flex-shrink: 0;
+}
+.btn-followup {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-top: 8px; font-size: 0.8125em; padding: 5px 11px;
+  background: var(--surface2); color: var(--text2);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  cursor: pointer; font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+}
+.followup-prompt-card {
+  background: var(--surface);
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.followup-prompt-text { font-size: 0.9375em; line-height: 1.5; margin-bottom: 4px; }
+.followup-days { font-weight: 700; color: var(--accent); }
+.followup-event-preview {
+  font-size: 0.8125em; color: var(--text2); margin-bottom: 10px;
+  padding: 6px 10px; background: var(--surface2); border-radius: var(--radius-sm);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.child-record-preview {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 10px; margin-bottom: 6px;
+  background: var(--surface2); border-radius: var(--radius-sm);
+  cursor: pointer; transition: opacity 0.15s;
+}
+.child-record-preview:hover { opacity: 0.75; }
+.parent-link {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 10px; background: var(--accent-light);
+  border-radius: var(--radius-sm); cursor: pointer;
+  font-size: 0.8125em; color: var(--accent); font-weight: 600;
+}
+
 /* Graph screen */
 .graph-filters {
   display: flex;
@@ -608,6 +655,7 @@ input[type=range]::-webkit-slider-thumb {
             <div class="nav-desc">共有・移行・削除</div>
           </div>
         </div>
+        <div id="followup-prompt" style="display:none;margin-top:12px;"></div>
         <p style="font-size:0.8125em;color:var(--text2);line-height:1.8;margin-top:16px;padding:0 4px;text-align:center;">
           何か感じたことがあれば、そのときすぐに記録を。<br>
           何もなかった日は、仕事の終わり・帰宅後・寝る前などに振り返ってみましょう。
@@ -620,7 +668,7 @@ input[type=range]::-webkit-slider-thumb {
   <div id="screen-new" class="screen">
     <div class="wizard-header">
       <div class="wizard-header-row">
-        <button class="wizard-home-btn" onclick="showScreen('home')">← ホーム</button>
+        <button class="wizard-home-btn" id="wizard-home-btn" onclick="cancelWizard()">← ホーム</button>
         <div class="wizard-title" id="wizard-title">新しく記録する</div>
         <div class="wizard-step-label" id="wizard-step-label">ステップ 1 / 5</div>
       </div>
@@ -856,6 +904,7 @@ function getCurrentDateTimeLocal() {
 // ============================
 let wizardStep = 0;
 let isLightMode = false;
+let linkedParentId = null;
 let wizardData = {};
 let exportPeriodDays = 30;
 let exportMonthKey = null;
@@ -892,7 +941,7 @@ function showScreen(name) {
     if (currentGraphTab === 'chart') renderGraph(currentRange);
     else renderAnalysis(currentAnalysisRange);
   }
-  if (name === 'home') { updateHomeCount(); updateHeroGreeting(); }
+  if (name === 'home') { updateHomeCount(); updateHeroGreeting(); updateFollowUpPrompt(); }
   if (name === 'export') {
     const ni = document.getElementById('name-input');
     if (ni) ni.value = loadName();
@@ -952,7 +1001,10 @@ function selectExportMonth(monthKey) {
 function startNew() {
   wizardStep = 0;
   isLightMode = false;
+  linkedParentId = null;
   wizardData = {};
+  const homeBtn = document.getElementById('wizard-home-btn');
+  if (homeBtn) homeBtn.textContent = '← ホーム';
   selectedEmoCategory = null;
   selectedEmoSub = null;
   selectedTriggers = new Set();
@@ -1024,6 +1076,74 @@ function selectEmoSub(sub, el) {
     document.getElementById('intensity-section').classList.add('visible');
     updateIntensity();
   }
+}
+
+function startFollowUp(parentId) {
+  linkedParentId = parentId;
+  isLightMode = false;
+  wizardData = {};
+  wizardStep = 1;
+  selectedEmoCategory = null;
+  selectedEmoSub = null;
+  selectedTriggers = new Set();
+  customTriggers = [];
+  selectedNeeds = new Set();
+  editingId = null;
+
+  document.getElementById('input-event-date').value = getCurrentDateTimeLocal();
+  document.getElementById('input-event').value = '';
+  document.getElementById('input-interpretation').value = '';
+  document.getElementById('intensity-slider').value = 3;
+  document.getElementById('input-needs-text').value = '';
+  document.getElementById('custom-tag-input').value = '';
+  document.getElementById('subcategory-section').classList.remove('visible');
+  document.getElementById('intensity-section').classList.remove('visible');
+  document.getElementById('screen-new').classList.remove('light-mode-active');
+
+  const homeBtn = document.getElementById('wizard-home-btn');
+  if (homeBtn) homeBtn.textContent = '← 一覧';
+
+  buildEmotionUI();
+  buildTriggerChips();
+  buildNeedsChips();
+  updateCustomTriggerChips();
+  updateWizardUI();
+  showScreen('new');
+}
+
+function cancelWizard() {
+  if (linkedParentId) { showScreen('list'); return; }
+  showScreen('home');
+}
+
+function updateFollowUpPrompt() {
+  const el = document.getElementById('followup-prompt');
+  if (!el) return;
+  const entries = loadEntries();
+  if (!entries.length) { el.style.display = 'none'; return; }
+
+  const childParentIds = new Set(entries.filter(e => e.parentId).map(e => e.parentId));
+  const now = Date.now();
+  const oneDayMs = 86400000;
+
+  const candidate = entries
+    .filter(e => !e.parentId && !childParentIds.has(e.id))
+    .filter(e => now - new Date(e.eventDate || e.date).getTime() >= oneDayMs)
+    .sort((a, b) => new Date(b.eventDate || b.date) - new Date(a.eventDate || a.date))[0];
+
+  if (!candidate) { el.style.display = 'none'; return; }
+
+  const daysAgo = Math.floor((now - new Date(candidate.eventDate || candidate.date).getTime()) / oneDayMs);
+  const eventPreview = candidate.event
+    ? candidate.event.slice(0, 28) + (candidate.event.length > 28 ? '…' : '')
+    : '（感情の記録）';
+
+  el.style.display = '';
+  el.innerHTML = `<div class="followup-prompt-card">
+    <div class="followup-prompt-text"><span class="followup-days">${daysAgo}日前の出来事</span>、気持ちの変化はありましたか？</div>
+    <div class="followup-event-preview">${escHtml(eventPreview)}</div>
+    <button class="btn btn-primary btn-sm" onclick="startFollowUp('${candidate.id}')">↩ 気持ちの変化を記録する</button>
+  </div>`;
 }
 
 function chooseRecordMode(mode) {
@@ -1126,7 +1246,15 @@ function updateWizardUI() {
     btnBack.style.display = (step === 1 || isLightStep) ? 'none' : '';
     if (step === 6 || isLightStep) { btnNext.textContent = '💾 保存する'; }
     else if (step >= 5) { btnNext.textContent = 'スキップ →'; }
+    else if (linkedParentId && step === 2) { btnNext.textContent = 'スキップ →'; }
     else { btnNext.textContent = '次へ →'; }
+    // Follow-up mode: step 2 hint
+    if (step === 2) {
+      const hint = document.querySelector('#step-2 .step-hint');
+      if (hint) hint.textContent = linkedParentId
+        ? '元の記録から続けているため省略できます（任意）'
+        : '事実だけを書いてください（解釈や感情は次のステップで）';
+    }
   }
 }
 
@@ -1136,7 +1264,7 @@ function wizardNext() {
     wizardData.eventDate = val ? new Date(val).toISOString() : new Date().toISOString();
   } else if (wizardStep === 2) {
     const val = document.getElementById('input-event').value.trim();
-    if (!val) { showToast('出来事を入力してください'); return; }
+    if (!val && !linkedParentId) { showToast('出来事を入力してください'); return; }
     wizardData.event = val;
   } else if (wizardStep === 3) {
     const val = document.getElementById('input-interpretation').value.trim();
@@ -1166,7 +1294,11 @@ function wizardNext() {
 
 function wizardBack() {
   if (wizardStep === 0) { showScreen('home'); return; }
-  if (wizardStep === 1 || (isLightMode && wizardStep === 4)) {
+  if (wizardStep === 1) {
+    if (linkedParentId) { showScreen('list'); return; }
+    wizardStep = 0; updateWizardUI(); return;
+  }
+  if (isLightMode && wizardStep === 4) {
     wizardStep = 0; updateWizardUI(); return;
   }
   wizardStep--;
@@ -1180,6 +1312,7 @@ function saveRecord() {
     date: new Date().toISOString(),
     ...wizardData
   };
+  if (linkedParentId) entry.parentId = linkedParentId;
   if (editingId) {
     const idx = entries.findIndex(e => e.id === editingId);
     if (idx >= 0) entries[idx] = entry;
@@ -1187,6 +1320,7 @@ function saveRecord() {
     entries.unshift(entry);
   }
   saveEntries(entries);
+  linkedParentId = null;
   showToast('記録を保存しました ✓');
   showScreen('list');
 }
@@ -1194,6 +1328,28 @@ function saveRecord() {
 // ============================
 // LIST
 // ============================
+function renderCardHTML(e, isChild) {
+  const d = new Date(e.eventDate || e.date);
+  const dateStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  const emo = EMOTIONS[e.emotion?.category] || {};
+  const intensity = e.emotion?.intensity || 0;
+  const dots = Array.from({length:5},(_,i)=>`<span class="intensity-dot${i<intensity?' filled':''}"></span>`).join('');
+  const childClass = isChild ? ' record-card-child' : '';
+  const childBadge = isChild ? '<span class="child-badge">続き</span>' : '';
+  const followUpBtn = !isChild
+    ? `<button class="btn-followup" onclick="event.stopPropagation();startFollowUp('${e.id}')">↩ 気持ちの変化を記録</button>`
+    : '';
+  return `<div class="record-card${childClass}" onclick="showDetail('${e.id}')">
+    <div class="record-card-header">
+      ${childBadge}<span class="record-date">${dateStr}</span>
+      ${e.emotion?.category ? `<span class="emo-badge">${emo.icon||''} ${e.emotion.category}</span>` : ''}
+      <span class="intensity-dots" style="margin-left:auto">${dots}</span>
+    </div>
+    ${e.event ? `<div class="record-event">${escHtml(e.event)}</div>` : ''}
+    ${followUpBtn}
+  </div>`;
+}
+
 function renderList() {
   const entries = loadEntries();
   const el = document.getElementById('list-content');
@@ -1201,21 +1357,29 @@ function renderList() {
     el.innerHTML = `<div class="list-empty"><div class="empty-icon">📭</div><p>まだ記録がありません</p></div>`;
     return;
   }
-  el.innerHTML = entries.map(e => {
-    const d = new Date(e.eventDate || e.date);
-    const dateStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-    const emo = EMOTIONS[e.emotion?.category] || {};
-    const intensity = e.emotion?.intensity || 0;
-    const dots = Array.from({length:5},(_,i)=>`<span class="intensity-dot${i<intensity?' filled':''}"></span>`).join('');
-    return `<div class="record-card" onclick="showDetail('${e.id}')">
-      <div class="record-card-header">
-        <span class="record-date">${dateStr}</span>
-        ${e.emotion?.category ? `<span class="emo-badge">${emo.icon||''} ${e.emotion.category}</span>` : ''}
-        <span class="intensity-dots" style="margin-left:auto">${dots}</span>
-      </div>
-      <div class="record-event">${escHtml(e.event)}</div>
-    </div>`;
-  }).join('');
+
+  const rootIds = new Set(entries.filter(e => !e.parentId).map(e => e.id));
+  const childrenByParent = {};
+  const orphans = [];
+  entries.forEach(e => {
+    if (!e.parentId) return;
+    if (rootIds.has(e.parentId)) {
+      if (!childrenByParent[e.parentId]) childrenByParent[e.parentId] = [];
+      childrenByParent[e.parentId].push(e);
+    } else {
+      orphans.push(e);
+    }
+  });
+  Object.values(childrenByParent).forEach(arr => arr.sort((a, b) => new Date(a.date) - new Date(b.date)));
+
+  let html = '';
+  entries.filter(e => !e.parentId).forEach(e => {
+    html += renderCardHTML(e, false);
+    (childrenByParent[e.id] || []).forEach(c => { html += renderCardHTML(c, true); });
+  });
+  orphans.forEach(e => { html += renderCardHTML(e, false); });
+
+  el.innerHTML = html;
 }
 
 // ============================
@@ -1237,14 +1401,52 @@ function showDetail(id) {
   const trigAll = [...(e.triggers||[]), ...(e.customTriggers||[])];
   const needsAll = e.needs || [];
 
+  // Parent link (when this is a follow-up)
+  const parent = e.parentId ? entries.find(x => x.id === e.parentId) : null;
+  const parentSection = parent ? (() => {
+    const pd = new Date(parent.eventDate || parent.date);
+    const pdStr = `${pd.getFullYear()}年${pd.getMonth()+1}月${pd.getDate()}日`;
+    const pev = parent.event ? parent.event.slice(0, 20) + (parent.event.length > 20 ? '…' : '') : '（感情の記録）';
+    return `<div class="detail-section">
+      <label>元の記録</label>
+      <div class="parent-link" onclick="showDetail('${parent.id}')">
+        <span>${pdStr}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(pev)}</span><span>→</span>
+      </div>
+    </div>`;
+  })() : '';
+
+  // Children list (when this is a parent)
+  const children = entries.filter(x => x.parentId === id).sort((a, b) => new Date(a.date) - new Date(b.date));
+  const childrenSection = children.length ? `
+    <div class="detail-section">
+      <label>その後の気持ち（${children.length}件）</label>
+      ${children.map(c => {
+        const cd = new Date(c.date);
+        const cdStr = `${cd.getFullYear()}/${String(cd.getMonth()+1).padStart(2,'0')}/${String(cd.getDate()).padStart(2,'0')}`;
+        const cemo = EMOTIONS[c.emotion?.category] || {};
+        return `<div class="child-record-preview" onclick="showDetail('${c.id}')">
+          <span class="record-date">${cdStr}</span>
+          ${c.emotion?.category ? `<span class="emo-badge">${cemo.icon||''} ${c.emotion.category}</span>` : ''}
+          ${c.event ? `<span style="font-size:0.8125em;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${escHtml(c.event.slice(0,20))}</span>` : ''}
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
+  // Follow-up button (only for root entries)
+  const followUpBtn = !e.parentId
+    ? `<button class="btn btn-secondary btn-sm" onclick="startFollowUp('${e.id}')">↩ 気持ちの変化を記録する</button>`
+    : '';
+
   document.getElementById('detail-content').innerHTML = `
     <div class="detail-header-bar">
       <button class="btn btn-ghost" onclick="showScreen('list')">← 一覧</button>
       <div>
         <div class="detail-date">${dateStr}</div>
         ${recStr ? `<div style="font-size:0.75em;color:var(--text2);margin-top:2px;">${recStr}</div>` : ''}
+        ${e.parentId ? `<div style="font-size:0.75em;color:var(--accent);margin-top:2px;">↩ 気持ちの変化の記録</div>` : ''}
       </div>
     </div>
+    ${parentSection}
     ${e.emotion?.category ? `
     <div class="detail-section">
       <label>感情</label>
@@ -1261,14 +1463,16 @@ function showDetail(id) {
         <span style="font-size: 0.9375em;font-weight:700;color:${emo.color||'var(--accent)'};">${intensity}</span>
       </div>
     </div>` : ''}
+    ${e.event ? `
     <div class="detail-section">
       <label>出来事</label>
       <p>${escHtml(e.event)}</p>
-    </div>
+    </div>` : ''}
+    ${e.interpretation ? `
     <div class="detail-section">
       <label>解釈・受け取り方</label>
       <p>${escHtml(e.interpretation)}</p>
-    </div>
+    </div>` : ''}
     ${trigAll.length ? `
     <div class="detail-section">
       <label>トリガー</label>
@@ -1280,7 +1484,9 @@ function showDetail(id) {
       ${needsAll.length ? `<div class="chips-row" style="margin-bottom:8px;">${needsAll.map(n=>`<span class="chip">${escHtml(n)}</span>`).join('')}</div>` : ''}
       ${e.needsText ? `<p>${escHtml(e.needsText)}</p>` : ''}
     </div>` : ''}
+    ${childrenSection}
     <div class="detail-actions">
+      ${followUpBtn}
       <button class="btn btn-danger btn-sm" onclick="deleteEntry('${e.id}')">🗑 削除</button>
     </div>
   `;
@@ -1647,13 +1853,26 @@ function exportHTML() {
   const graphDataURL = canvas.width > 0 ? canvas.toDataURL('image/png') : null;
   graphScreen.style.display = origDisplay;
 
-  const rows = entries.map(e => {
+  const exportRootIds = new Set(entries.filter(e => !e.parentId).map(e => e.id));
+  const exportChildrenByParent = {};
+  const exportOrphans = [];
+  entries.forEach(e => {
+    if (!e.parentId) return;
+    if (exportRootIds.has(e.parentId)) {
+      if (!exportChildrenByParent[e.parentId]) exportChildrenByParent[e.parentId] = [];
+      exportChildrenByParent[e.parentId].push(e);
+    } else { exportOrphans.push(e); }
+  });
+  const makeExportRow = (e, isChild) => {
     const d = new Date(e.eventDate || e.date);
-    const dateStr = `${d.getFullYear()}<br>${d.getMonth()+1}/${d.getDate()}`;
+    const dateStr = isChild
+      ? `└ ${d.getMonth()+1}/${d.getDate()}`
+      : `${d.getFullYear()}<br>${d.getMonth()+1}/${d.getDate()}`;
     const emo = EMOTIONS[e.emotion?.category] || {};
     const trigAll = [...(e.triggers||[]), ...(e.customTriggers||[])].join('<br>');
     const needsAll = (e.needs||[]).join('・');
-    return `<tr>
+    const rowStyle = isChild ? ' style="background:#f5f2ec;"' : '';
+    return `<tr${rowStyle}>
       <td style="white-space:nowrap">${dateStr}</td>
       <td style="white-space:nowrap">${e.emotion?.category ? emo.icon + ' ' + e.emotion.category + '（' + e.emotion.subcategory + '）<br>強さ' + e.emotion.intensity : ''}</td>
       <td>${escHtml(e.event)}</td>
@@ -1661,7 +1880,15 @@ function exportHTML() {
       <td>${trigAll}</td>
       <td>${needsAll}${e.needsText ? (needsAll ? '<br>' : '') + '<span style="color:#666;font-size:0.9em">' + escHtml(e.needsText) + '</span>' : ''}</td>
     </tr>`;
-  }).join('');
+  };
+  let rows = '';
+  entries.filter(e => !e.parentId).forEach(e => {
+    rows += makeExportRow(e, false);
+    (exportChildrenByParent[e.id] || [])
+      .sort((a, b) => new Date(a.eventDate||a.date) - new Date(b.eventDate||b.date))
+      .forEach(c => { rows += makeExportRow(c, true); });
+  });
+  exportOrphans.forEach(e => { rows += makeExportRow(e, false); });
 
   const graphSection = graphDataURL
     ? `<h2 style="font-size:1em;margin:24px 0 10px;">感情の流れ（${periodLabel}）</h2>
