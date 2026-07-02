@@ -430,6 +430,32 @@ input[type=range]::-webkit-slider-thumb {
   border-radius: var(--radius-sm); cursor: pointer;
   font-size: 0.8125em; color: var(--accent); font-weight: 600;
 }
+.record-card-linked {
+  margin-left: 16px;
+  border-left: 3px solid #8d99ae;
+  background: var(--surface2);
+  margin-bottom: 6px;
+}
+.linked-badge {
+  font-size: 0.6875em; font-weight: 700; color: #5c6370;
+  background: #e8eaed; border: 1px solid #8d99ae;
+  padding: 1px 7px; border-radius: 10px; flex-shrink: 0;
+}
+.link-picker-item {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 10px 12px; margin-bottom: 6px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); cursor: pointer; transition: opacity 0.15s;
+}
+.link-picker-item:hover { opacity: 0.75; }
+.btn-link {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 0.8125em; padding: 5px 11px;
+  background: var(--surface2); color: var(--text2);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  cursor: pointer; font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+}
 
 /* Graph screen */
 .graph-filters {
@@ -882,9 +908,26 @@ const NEEDS_PRESETS   = ['承認','安心','自由','つながり','休息','理
 
 const INTENSITY_DESCS = ['','とても小さい','小さい','ふつう','強い','とても強い'];
 
+function upgradeEntries(entries) {
+  if (!entries.some(e => e.parentId && !e.groupId)) return entries;
+  const updated = entries.map(e => ({...e}));
+  updated.forEach(e => {
+    if (e.parentId && !e.groupId) {
+      const parent = updated.find(x => x.id === e.parentId);
+      if (!parent) return;
+      const gid = parent.groupId || ('g' + e.parentId.slice(0, 8));
+      e.groupId = gid;
+      if (!parent.groupId) parent.groupId = gid;
+    }
+  });
+  saveEntries(updated);
+  return updated;
+}
 function loadEntries() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
-  catch { return []; }
+  try {
+    const entries = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    return upgradeEntries(entries);
+  } catch { return []; }
 }
 function saveEntries(arr) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
@@ -1122,12 +1165,12 @@ function updateFollowUpPrompt() {
   const entries = loadEntries();
   if (!entries.length) { el.style.display = 'none'; return; }
 
-  const childParentIds = new Set(entries.filter(e => e.parentId).map(e => e.parentId));
+  const groupedIds = new Set(entries.filter(e => e.groupId).map(e => e.id));
   const now = Date.now();
   const oneDayMs = 86400000;
 
   const candidate = entries
-    .filter(e => !e.parentId && !childParentIds.has(e.id))
+    .filter(e => !groupedIds.has(e.id))
     .filter(e => now - new Date(e.eventDate || e.date).getTime() >= oneDayMs)
     .sort((a, b) => new Date(b.eventDate || b.date) - new Date(a.eventDate || a.date))[0];
 
@@ -1312,7 +1355,18 @@ function saveRecord() {
     date: new Date().toISOString(),
     ...wizardData
   };
-  if (linkedParentId) entry.parentId = linkedParentId;
+  if (linkedParentId) {
+    entry.parentId = linkedParentId;
+    const parent = entries.find(e => e.id === linkedParentId);
+    if (parent) {
+      const gid = parent.groupId || ('g' + linkedParentId.slice(0, 8));
+      entry.groupId = gid;
+      if (!parent.groupId) {
+        const pidx = entries.findIndex(e => e.id === linkedParentId);
+        if (pidx >= 0) entries[pidx] = {...entries[pidx], groupId: gid};
+      }
+    }
+  }
   if (editingId) {
     const idx = entries.findIndex(e => e.id === editingId);
     if (idx >= 0) entries[idx] = entry;
@@ -1328,20 +1382,22 @@ function saveRecord() {
 // ============================
 // LIST
 // ============================
-function renderCardHTML(e, isChild) {
+// badge: null=root, '続き'=follow-up child, '🔗 関連'=retroactively linked
+function renderCardHTML(e, badge) {
   const d = new Date(e.eventDate || e.date);
   const dateStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
   const emo = EMOTIONS[e.emotion?.category] || {};
   const intensity = e.emotion?.intensity || 0;
   const dots = Array.from({length:5},(_,i)=>`<span class="intensity-dot${i<intensity?' filled':''}"></span>`).join('');
-  const childClass = isChild ? ' record-card-child' : '';
-  const childBadge = isChild ? '<span class="child-badge">続き</span>' : '';
-  const followUpBtn = !isChild
+  const cardClass = badge === '続き' ? ' record-card-child' : badge ? ' record-card-linked' : '';
+  const badgeCls = badge === '続き' ? 'child-badge' : 'linked-badge';
+  const badgeHtml = badge ? `<span class="${badgeCls}">${badge}</span>` : '';
+  const followUpBtn = badge === null
     ? `<button class="btn-followup" onclick="event.stopPropagation();startFollowUp('${e.id}')">↩ 気持ちの変化を記録</button>`
     : '';
-  return `<div class="record-card${childClass}" onclick="showDetail('${e.id}')">
+  return `<div class="record-card${cardClass}" onclick="showDetail('${e.id}')">
     <div class="record-card-header">
-      ${childBadge}<span class="record-date">${dateStr}</span>
+      ${badgeHtml}<span class="record-date">${dateStr}</span>
       ${e.emotion?.category ? `<span class="emo-badge">${emo.icon||''} ${e.emotion.category}</span>` : ''}
       <span class="intensity-dots" style="margin-left:auto">${dots}</span>
     </div>
@@ -1358,26 +1414,36 @@ function renderList() {
     return;
   }
 
-  const rootIds = new Set(entries.filter(e => !e.parentId).map(e => e.id));
-  const childrenByParent = {};
-  const orphans = [];
+  const groupMap = {};
+  const singles = [];
   entries.forEach(e => {
-    if (!e.parentId) return;
-    if (rootIds.has(e.parentId)) {
-      if (!childrenByParent[e.parentId]) childrenByParent[e.parentId] = [];
-      childrenByParent[e.parentId].push(e);
+    if (e.groupId) {
+      if (!groupMap[e.groupId]) groupMap[e.groupId] = [];
+      groupMap[e.groupId].push(e);
     } else {
-      orphans.push(e);
+      singles.push(e);
     }
   });
-  Object.values(childrenByParent).forEach(arr => arr.sort((a, b) => new Date(a.date) - new Date(b.date)));
+
+  const units = [];
+  singles.forEach(e => {
+    units.push({ members: [e], sortKey: new Date(e.eventDate||e.date).getTime() });
+  });
+  Object.values(groupMap).forEach(members => {
+    members.sort((a, b) => new Date(a.eventDate||a.date) - new Date(b.eventDate||b.date));
+    const sortKey = Math.max(...members.map(m => new Date(m.eventDate||m.date).getTime()));
+    units.push({ members, sortKey });
+  });
+  units.sort((a, b) => b.sortKey - a.sortKey);
 
   let html = '';
-  entries.filter(e => !e.parentId).forEach(e => {
-    html += renderCardHTML(e, false);
-    (childrenByParent[e.id] || []).forEach(c => { html += renderCardHTML(c, true); });
+  units.forEach(unit => {
+    const [root, ...rest] = unit.members;
+    html += renderCardHTML(root, null);
+    rest.forEach(e => {
+      html += renderCardHTML(e, e.parentId ? '続き' : '🔗 関連');
+    });
   });
-  orphans.forEach(e => { html += renderCardHTML(e, false); });
 
   el.innerHTML = html;
 }
@@ -1415,27 +1481,35 @@ function showDetail(id) {
     </div>`;
   })() : '';
 
-  // Children list (when this is a parent)
-  const children = entries.filter(x => x.parentId === id).sort((a, b) => new Date(a.date) - new Date(b.date));
-  const childrenSection = children.length ? `
+  // Group members (by groupId, excluding self)
+  const groupMembers = e.groupId
+    ? entries.filter(x => x.groupId === e.groupId && x.id !== id)
+        .sort((a, b) => new Date(a.eventDate||a.date) - new Date(b.eventDate||b.date))
+    : [];
+  const groupSection = groupMembers.length ? `
     <div class="detail-section">
-      <label>その後の気持ち（${children.length}件）</label>
-      ${children.map(c => {
-        const cd = new Date(c.date);
-        const cdStr = `${cd.getFullYear()}/${String(cd.getMonth()+1).padStart(2,'0')}/${String(cd.getDate()).padStart(2,'0')}`;
-        const cemo = EMOTIONS[c.emotion?.category] || {};
-        return `<div class="child-record-preview" onclick="showDetail('${c.id}')">
-          <span class="record-date">${cdStr}</span>
-          ${c.emotion?.category ? `<span class="emo-badge">${cemo.icon||''} ${c.emotion.category}</span>` : ''}
-          ${c.event ? `<span style="font-size:0.8125em;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${escHtml(c.event.slice(0,20))}</span>` : ''}
+      <label>グループの記録（${groupMembers.length}件）</label>
+      ${groupMembers.map(m => {
+        const md = new Date(m.eventDate||m.date);
+        const mdStr = `${md.getFullYear()}/${String(md.getMonth()+1).padStart(2,'0')}/${String(md.getDate()).padStart(2,'0')}`;
+        const memo = EMOTIONS[m.emotion?.category] || {};
+        const mPrev = m.event ? escHtml(m.event.slice(0, 20)) + (m.event.length > 20 ? '…' : '') : '（感情の記録）';
+        const mBadge = m.parentId ? '<span class="child-badge" style="flex-shrink:0;">続き</span>' : '<span class="linked-badge" style="flex-shrink:0;">🔗 関連</span>';
+        return `<div class="child-record-preview" style="align-items:center;">
+          ${mBadge}
+          <span class="record-date" style="flex-shrink:0;">${mdStr}</span>
+          ${m.emotion?.category ? `<span class="emo-badge">${memo.icon||''} ${m.emotion.category}</span>` : ''}
+          <span style="font-size:0.8125em;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;" onclick="showDetail('${m.id}')">${mPrev}</span>
+          <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();showDetail('${m.id}')">→</button>
+          <button class="btn btn-ghost btn-sm" style="color:#c0392b;font-size:0.75em;white-space:nowrap;" onclick="event.stopPropagation();unlinkRecord('${m.id}')">解除</button>
         </div>`;
       }).join('')}
     </div>` : '';
 
-  // Follow-up button (only for root entries)
   const followUpBtn = !e.parentId
     ? `<button class="btn btn-secondary btn-sm" onclick="startFollowUp('${e.id}')">↩ 気持ちの変化を記録する</button>`
     : '';
+  const linkBtn = `<button class="btn-link" onclick="showLinkPicker('${e.id}')">🔗 別の記録と紐づける</button>`;
 
   document.getElementById('detail-content').innerHTML = `
     <div class="detail-header-bar">
@@ -1484,13 +1558,78 @@ function showDetail(id) {
       ${needsAll.length ? `<div class="chips-row" style="margin-bottom:8px;">${needsAll.map(n=>`<span class="chip">${escHtml(n)}</span>`).join('')}</div>` : ''}
       ${e.needsText ? `<p>${escHtml(e.needsText)}</p>` : ''}
     </div>` : ''}
-    ${childrenSection}
+    ${groupSection}
     <div class="detail-actions">
       ${followUpBtn}
+      ${linkBtn}
       <button class="btn btn-danger btn-sm" onclick="deleteEntry('${e.id}')">🗑 削除</button>
     </div>
   `;
   showScreen('detail');
+}
+
+function showLinkPicker(id) {
+  const entries = loadEntries();
+  const current = entries.find(e => e.id === id);
+  if (!current) return;
+  const myGroupId = current.groupId;
+  const candidates = entries
+    .filter(e => e.id !== id && (!myGroupId || e.groupId !== myGroupId))
+    .sort((a, b) => new Date(b.eventDate||b.date) - new Date(a.eventDate||a.date));
+
+  const itemsHtml = candidates.length ? candidates.map(c => {
+    const cd = new Date(c.eventDate||c.date);
+    const cdStr = `${cd.getFullYear()}/${String(cd.getMonth()+1).padStart(2,'0')}/${String(cd.getDate()).padStart(2,'0')}`;
+    const cemo = EMOTIONS[c.emotion?.category] || {};
+    const cPrev = c.event ? escHtml(c.event.slice(0, 24)) + (c.event.length > 24 ? '…' : '') : '（感情の記録）';
+    return `<div class="link-picker-item" onclick="linkRecords('${id}','${c.id}')">
+      <span class="record-date" style="flex-shrink:0;">${cdStr}</span>
+      ${c.emotion?.category ? `<span class="emo-badge">${cemo.icon||''} ${c.emotion.category}</span>` : ''}
+      <span style="font-size:0.8125em;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${cPrev}</span>
+      <span style="color:var(--accent);font-size:0.8125em;font-weight:700;flex-shrink:0;">紐づける</span>
+    </div>`;
+  }).join('') : '<p style="color:var(--text2);font-size:0.875em;">紐づけ可能な記録がありません</p>';
+
+  document.getElementById('detail-content').innerHTML = `
+    <div class="detail-header-bar">
+      <button class="btn btn-ghost" onclick="showDetail('${id}')">← 戻る</button>
+      <div><div class="detail-date">紐づける記録を選択</div></div>
+    </div>
+    <div style="padding:4px 0 12px;">${itemsHtml}</div>
+  `;
+}
+
+function linkRecords(id1, id2) {
+  const entries = loadEntries();
+  const e1 = entries.find(e => e.id === id1);
+  const e2 = entries.find(e => e.id === id2);
+  if (!e1 || !e2) return;
+  const gid = e1.groupId || e2.groupId || ('g' + genId().slice(0, 8));
+  const oldGids = new Set([e1.groupId, e2.groupId].filter(Boolean));
+  entries.forEach(e => {
+    if (e.id === id1 || e.id === id2 || (e.groupId && oldGids.has(e.groupId))) {
+      e.groupId = gid;
+    }
+  });
+  saveEntries(entries);
+  showToast('記録を紐づけました ✓');
+  showDetail(id1);
+}
+
+function unlinkRecord(id) {
+  if (!confirm('この記録のグループから解除しますか？')) return;
+  const entries = loadEntries();
+  const target = entries.find(e => e.id === id);
+  if (!target || !target.groupId) return;
+  const gid = target.groupId;
+  target.groupId = undefined;
+  target.parentId = undefined;
+  const remaining = entries.filter(e => e.id !== id && e.groupId === gid);
+  if (remaining.length === 1) remaining[0].groupId = undefined;
+  saveEntries(entries);
+  showToast('グループから解除しました');
+  renderList();
+  showScreen('list');
 }
 
 function deleteEntry(id) {
